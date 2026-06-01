@@ -31,6 +31,9 @@ async fn main() {
         models::AITaskSuggestion::export().unwrap();
         models::AIPhaseSuggestion::export().unwrap();
         models::AIGenerateResponse::export().unwrap();
+	models::SyncTaskUpdate::export().unwrap();
+        models::SyncTableChanges::export().unwrap();
+        models::SyncPushRequest::export().unwrap();
         
 
         let index_content = r#"
@@ -47,6 +50,9 @@ export * from './AIGenerateRequest';
 export * from './AITaskSuggestion';
 export * from './AIPhaseSuggestion';
 export * from './AIGenerateResponse';
+export * from './SyncTaskUpdate';
+export * from './SyncTableChanges';
+export * from './SyncPushRequest';
 "#;
         std::fs::write("../../packages/shared-types/src/index.ts", index_content.trim())
             .expect("Failed to write index.ts");
@@ -76,6 +82,7 @@ export * from './AIGenerateResponse';
 	.route("/api/projects/:project_id/audit-logs", get(api::audit_logs::get_audit_logs))
         .route("/api/tasks/:task_id/status", patch(api::tasks::update_task_status))
 	.route("/api/ai/suggest-phases", post(api::ai::suggest_phases))
+	.route("/api/sync", post(api::sync::push_sync))
         .with_state(pool);
 
     // 4. Start Server

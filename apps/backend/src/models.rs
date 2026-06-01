@@ -7,7 +7,7 @@ use chrono::{DateTime, Utc};
 
 // --- TASK MODELS ---
 
-#[derive(Serialize, Deserialize, TS, Debug, sqlx::Type)] // <-- Added sqlx::Type
+#[derive(Serialize, Deserialize, TS, Debug, sqlx::Type, Clone, Copy)] 
 #[sqlx(type_name = "task_status", rename_all = "SCREAMING_SNAKE_CASE")]
 #[allow(non_camel_case_types)]
 #[ts(export, export_to = "../../packages/shared-types/src/TaskStatus.ts")]
@@ -123,4 +123,30 @@ pub struct AIPhaseSuggestion {
 #[ts(export, export_to = "../../packages/shared-types/src/AIGenerateResponse.ts")]
 pub struct AIGenerateResponse {
     pub phases: Vec<AIPhaseSuggestion>,
+}
+
+// --- WATERMELON DB SYNC MODELS ---
+use std::collections::HashMap;
+
+#[derive(Serialize, Deserialize, TS, Debug)]
+#[ts(export, export_to = "../../packages/shared-types/src/SyncTaskUpdate.ts")]
+pub struct SyncTaskUpdate {
+    pub id: Uuid,
+    pub status: TaskStatus, // The field officer changed the status offline
+}
+
+#[derive(Serialize, Deserialize, TS, Debug)]
+#[ts(export, export_to = "../../packages/shared-types/src/SyncTableChanges.ts")]
+pub struct SyncTableChanges {
+    #[ts(type = "any[]")]
+    pub created: Vec<serde_json::Value>, // Ignoring creates for MVP sync
+    pub updated: Vec<SyncTaskUpdate>,    // We only care about Task updates!
+    pub deleted: Vec<String>,            // Ignoring deletes for MVP sync
+}
+
+#[derive(Serialize, Deserialize, TS, Debug)]
+#[ts(export, export_to = "../../packages/shared-types/src/SyncPushRequest.ts")]
+pub struct SyncPushRequest {
+    pub changes: HashMap<String, SyncTableChanges>, // Map of table names (e.g., "tasks") to changes
+    pub last_pulled_at: i64,
 }
