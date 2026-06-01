@@ -38,6 +38,9 @@ async fn main() {
         models::UploadUrlResponse::export().unwrap();
         models::ConfirmUploadRequest::export().unwrap();
 	models::UpdateBudgetRequest::export().unwrap();        
+        models::AlertResponse::export().unwrap();
+        models::ProjectStatsResponse::export().unwrap();
+
 
 
         let index_content = r#"
@@ -61,6 +64,9 @@ export * from './GenerateUploadUrlRequest';
 export * from './UploadUrlResponse';
 export * from './ConfirmUploadRequest';
 export * from './UpdateBudgetRequest';
+export * from './AlertResponse';
+export * from './ProjectStatsResponse';
+
 "#;
         std::fs::write("../../packages/shared-types/src/index.ts", index_content.trim())
             .expect("Failed to write index.ts");
@@ -94,11 +100,45 @@ export * from './UpdateBudgetRequest';
         .route("/api/media/upload-url", post(api::media::get_upload_url))
         .route("/api/media/confirm", post(api::media::confirm_upload))
 	.route("/api/projects/:project_id/budget", patch(api::projects::update_project_budget))
+        .route("/api/projects/:project_id/alerts", get(api::alerts::get_alerts))
+        .route("/api/projects/:project_id/stats", get(api::projects::get_project_stats))
+        .layer(axum::middleware::from_fn(cors_middleware))
         .with_state(pool);
+
 
     // 4. Start Server
     let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
     tracing::info!("🚀 Server running on http://{}", addr);
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();
+}
+
+use axum::{
+    http::{HeaderValue, Method, Request, Response, StatusCode},
+    middleware::Next,
+    response::IntoResponse,
+};
+
+async fn cors_middleware(
+    request: Request<axum::body::Body>,
+    next: Next,
+) -> axum::response::Response {
+    let method = request.method().clone();
+    
+    // Handle OPTIONS preflight requests
+    if method == Method::OPTIONS {
+        let mut response = StatusCode::NO_CONTENT.into_response();
+        let headers = response.headers_mut();
+        headers.insert("access-control-allow-origin", HeaderValue::from_static("*"));
+        headers.insert("access-control-allow-methods", HeaderValue::from_static("GET, POST, PATCH, PUT, DELETE, OPTIONS"));
+        headers.insert("access-control-allow-headers", HeaderValue::from_static("authorization, content-type"));
+        return response;
+    }
+
+    let mut response = next.run(request).await;
+    let headers = response.headers_mut();
+    headers.insert("access-control-allow-origin", HeaderValue::from_static("*"));
+    headers.insert("access-control-allow-methods", HeaderValue::from_static("GET, POST, PATCH, PUT, DELETE, OPTIONS"));
+    headers.insert("access-control-allow-headers", HeaderValue::from_static("authorization, content-type"));
+    response
 }

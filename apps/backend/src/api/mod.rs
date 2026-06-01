@@ -6,3 +6,5 @@ pub mod audit_logs;
 pub mod ai;
 pub mod sync;
 pub mod media;
+pub mod alerts;
+

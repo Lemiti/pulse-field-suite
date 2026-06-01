@@ -10,7 +10,7 @@ use chrono::{DateTime, Utc};
 #[derive(Serialize, Deserialize, TS, Debug, sqlx::Type, Clone, Copy)] 
 #[sqlx(type_name = "task_status", rename_all = "SCREAMING_SNAKE_CASE")]
 #[allow(non_camel_case_types)]
-#[ts(export, export_to = "../../packages/shared-types/src/TaskStatus.ts")]
+#[ts(export, export_to = "../../../packages/shared-types/src/TaskStatus.ts")]
 pub enum TaskStatus {
     PLAN,
     IN_PROGRESS,
@@ -19,7 +19,7 @@ pub enum TaskStatus {
 }
 
 #[derive(Serialize, Deserialize, TS, Debug)]
-#[ts(export, export_to = "../../packages/shared-types/src/TaskResponse.ts")]
+#[ts(export, export_to = "../../../packages/shared-types/src/TaskResponse.ts")]
 pub struct TaskResponse {
     pub id: Uuid,
     pub project_id: Uuid,
@@ -33,7 +33,7 @@ pub struct TaskResponse {
 #[derive(Serialize, Deserialize, TS, Debug, sqlx::Type)]
 #[sqlx(type_name = "project_status", rename_all = "SCREAMING_SNAKE_CASE")]
 #[allow(non_camel_case_types)]
-#[ts(export, export_to = "../../packages/shared-types/src/ProjectStatus.ts")]
+#[ts(export, export_to = "../../../packages/shared-types/src/ProjectStatus.ts")]
 pub enum ProjectStatus {
     PLANNING,
     IN_PROGRESS,
@@ -42,7 +42,7 @@ pub enum ProjectStatus {
 }
 
 #[derive(Serialize, Deserialize, TS, Debug)]
-#[ts(export, export_to = "../../packages/shared-types/src/CreateProjectRequest.ts")]
+#[ts(export, export_to = "../../../packages/shared-types/src/CreateProjectRequest.ts")]
 pub struct CreateProjectRequest {
     pub name: String,
     pub description: Option<String>,
@@ -52,7 +52,7 @@ pub struct CreateProjectRequest {
 }
 
 #[derive(Serialize, Deserialize, TS, Debug)]
-#[ts(export, export_to = "../../packages/shared-types/src/ProjectResponse.ts")]
+#[ts(export, export_to = "../../../packages/shared-types/src/ProjectResponse.ts")]
 pub struct ProjectResponse {
     pub id: Uuid,
     pub country_id: Uuid,
@@ -68,7 +68,7 @@ pub struct ProjectResponse {
 }
 
 #[derive(Serialize, Deserialize, TS, Debug)]
-#[ts(export, export_to = "../../packages/shared-types/src/CreateTaskRequest.ts")]
+#[ts(export, export_to = "../../../packages/shared-types/src/CreateTaskRequest.ts")]
 pub struct CreateTaskRequest {
     pub project_id: Uuid,
     pub phase_id: Option<Uuid>, // Nullable! This satisfies the "Uncategorized Bucket" SRS rule.
@@ -78,7 +78,7 @@ pub struct CreateTaskRequest {
 // --- AUDIT LOG MODELS ---
 
 #[derive(Serialize, Deserialize, TS, Debug)]
-#[ts(export, export_to = "../../packages/shared-types/src/AuditLogResponse.ts")]
+#[ts(export, export_to = "../../../packages/shared-types/src/AuditLogResponse.ts")]
 pub struct AuditLogResponse {
     pub id: Uuid,
     pub project_id: Uuid,
@@ -91,7 +91,7 @@ pub struct AuditLogResponse {
 }
 
 #[derive(Serialize, Deserialize, TS, Debug)]
-#[ts(export, export_to = "../../packages/shared-types/src/UpdateTaskStatusRequest.ts")]
+#[ts(export, export_to = "../../../packages/shared-types/src/UpdateTaskStatusRequest.ts")]
 pub struct UpdateTaskStatusRequest {
     pub status: TaskStatus,
 }
@@ -99,28 +99,28 @@ pub struct UpdateTaskStatusRequest {
 // --- AI GENERATION MODELS ---
 
 #[derive(Serialize, Deserialize, TS, Debug)]
-#[ts(export, export_to = "../../packages/shared-types/src/AIGenerateRequest.ts")]
+#[ts(export, export_to = "../../../packages/shared-types/src/AIGenerateRequest.ts")]
 pub struct AIGenerateRequest {
     pub project_name: String,
     pub description: String,
 }
 
 #[derive(Serialize, Deserialize, TS, Debug, Clone)]
-#[ts(export, export_to = "../../packages/shared-types/src/AITaskSuggestion.ts")]
+#[ts(export, export_to = "../../../packages/shared-types/src/AITaskSuggestion.ts")]
 pub struct AITaskSuggestion {
     pub name: String,
     pub estimated_days: u32,
 }
 
 #[derive(Serialize, Deserialize, TS, Debug, Clone)]
-#[ts(export, export_to = "../../packages/shared-types/src/AIPhaseSuggestion.ts")]
+#[ts(export, export_to = "../../../packages/shared-types/src/AIPhaseSuggestion.ts")]
 pub struct AIPhaseSuggestion {
     pub name: String,
     pub tasks: Vec<AITaskSuggestion>,
 }
 
 #[derive(Serialize, Deserialize, TS, Debug)]
-#[ts(export, export_to = "../../packages/shared-types/src/AIGenerateResponse.ts")]
+#[ts(export, export_to = "../../../packages/shared-types/src/AIGenerateResponse.ts")]
 pub struct AIGenerateResponse {
     pub phases: Vec<AIPhaseSuggestion>,
 }
@@ -129,14 +129,14 @@ pub struct AIGenerateResponse {
 use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize, TS, Debug)]
-#[ts(export, export_to = "../../packages/shared-types/src/SyncTaskUpdate.ts")]
+#[ts(export, export_to = "../../../packages/shared-types/src/SyncTaskUpdate.ts")]
 pub struct SyncTaskUpdate {
     pub id: Uuid,
     pub status: TaskStatus, // The field officer changed the status offline
 }
 
 #[derive(Serialize, Deserialize, TS, Debug)]
-#[ts(export, export_to = "../../packages/shared-types/src/SyncTableChanges.ts")]
+#[ts(export, export_to = "../../../packages/shared-types/src/SyncTableChanges.ts")]
 pub struct SyncTableChanges {
     #[ts(type = "any[]")]
     pub created: Vec<serde_json::Value>, // Ignoring creates for MVP sync
@@ -145,7 +145,7 @@ pub struct SyncTableChanges {
 }
 
 #[derive(Serialize, Deserialize, TS, Debug)]
-#[ts(export, export_to = "../../packages/shared-types/src/SyncPushRequest.ts")]
+#[ts(export, export_to = "../../../packages/shared-types/src/SyncPushRequest.ts")]
 pub struct SyncPushRequest {
     pub changes: HashMap<String, SyncTableChanges>, // Map of table names (e.g., "tasks") to changes
     pub last_pulled_at: i64,
@@ -154,7 +154,7 @@ pub struct SyncPushRequest {
 // --- MEDIA / PROOF OF WORK MODELS ---
 
 #[derive(Serialize, Deserialize, TS, Debug)]
-#[ts(export, export_to = "../../packages/shared-types/src/GenerateUploadUrlRequest.ts")]
+#[ts(export, export_to = "../../../packages/shared-types/src/GenerateUploadUrlRequest.ts")]
 pub struct GenerateUploadUrlRequest {
     pub task_id: Uuid,
     pub mime_type: String, // e.g., "image/jpeg"
@@ -162,14 +162,14 @@ pub struct GenerateUploadUrlRequest {
 }
 
 #[derive(Serialize, Deserialize, TS, Debug)]
-#[ts(export, export_to = "../../packages/shared-types/src/UploadUrlResponse.ts")]
+#[ts(export, export_to = "../../../packages/shared-types/src/UploadUrlResponse.ts")]
 pub struct UploadUrlResponse {
     pub upload_url: String,
     pub file_id: String,
 }
 
 #[derive(Serialize, Deserialize, TS, Debug)]
-#[ts(export, export_to = "../../packages/shared-types/src/ConfirmUploadRequest.ts")]
+#[ts(export, export_to = "../../../packages/shared-types/src/ConfirmUploadRequest.ts")]
 pub struct ConfirmUploadRequest {
     pub task_id: Uuid,
     pub file_id: String,
@@ -177,9 +177,33 @@ pub struct ConfirmUploadRequest {
 }
 
 #[derive(Serialize, Deserialize, TS, Debug)]
-#[ts(export, export_to = "../../packages/shared-types/src/UpdateBudgetRequest.ts")]
+#[ts(export, export_to = "../../../packages/shared-types/src/UpdateBudgetRequest.ts")]
 pub struct UpdateBudgetRequest {
     #[ts(type = "number")]
     pub amount_spent: Decimal, // The new expense amount to add
 }
+
+// --- NEW ALERT AND STATISTICS MODELS ---
+
+#[derive(Serialize, Deserialize, TS, Debug, sqlx::FromRow)]
+#[ts(export, export_to = "../../../packages/shared-types/src/AlertResponse.ts")]
+pub struct AlertResponse {
+    pub id: Uuid,
+    pub project_id: Uuid,
+    pub message: String,
+    pub severity: String,
+    pub dismissed: bool,
+    #[ts(type = "string")]
+    pub created_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Serialize, Deserialize, TS, Debug)]
+#[ts(export, export_to = "../../../packages/shared-types/src/ProjectStatsResponse.ts")]
+pub struct ProjectStatsResponse {
+    pub project_id: Uuid,
+    pub wells_completed: i64,
+    pub active_teams: i64,
+    pub budget_spent_percent: f64,
+}
+
 

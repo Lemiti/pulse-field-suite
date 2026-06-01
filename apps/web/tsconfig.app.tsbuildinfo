@@ -1,0 +1,1 @@
+{"root":["./src/App.tsx","./src/main.tsx","./src/features/placeholder/PlaceholderPage.tsx","./src/features/projects/NewTaskModal.tsx","./src/features/projects/ProjectDashboard.tsx","./src/features/projects/ProjectsList.tsx","./src/layout/MainLayout.tsx","./src/layout/Sidebar.tsx","./src/layout/TabEngine.tsx","./src/layout/TopNav.tsx","./src/lib/api.ts"],"version":"6.0.3"}

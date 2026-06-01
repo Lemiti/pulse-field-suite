@@ -153,3 +153,64 @@ pub async fn update_project_budget(
 
     Ok(Json(updated_project))
 }
+
+use crate::models::ProjectStatsResponse;
+
+// GET /api/projects/:project_id/stats
+pub async fn get_project_stats(
+    State(pool): State<PgPool>,
+    claims: UserClaims, // 🛡️ AUTH GUARD
+    Path(project_id): Path<Uuid>,
+) -> Result<Json<ProjectStatsResponse>, (StatusCode, String)> {
+    
+    // 🛡️ SECURITY: Verify the project belongs to the user's country
+    let project = sqlx::query!(
+        r#"SELECT budget_allocated, budget_spent, country_id FROM projects WHERE id = $1"#,
+        project_id
+    )
+    .fetch_optional(&pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+    .ok_or((StatusCode::NOT_FOUND, "Project not found".to_string()))?;
+
+    if project.country_id != claims.country_id {
+        return Err((StatusCode::FORBIDDEN, "Access Denied".to_string()));
+    }
+
+    // Query wells completed
+    let wells_completed = sqlx::query_scalar!(
+        r#"SELECT COUNT(*) FROM tasks WHERE project_id = $1 AND status = 'COMPLETED'"#,
+        project_id
+    )
+    .fetch_one(&pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+    .unwrap_or(0);
+
+    // Query active teams (distinct users assigned to tasks)
+    let active_teams = sqlx::query_scalar!(
+        r#"SELECT COUNT(DISTINCT assigned_to) FROM tasks WHERE project_id = $1 AND assigned_to IS NOT NULL"#,
+        project_id
+    )
+    .fetch_one(&pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+    .unwrap_or(0);
+
+    // Calculate budget percentage
+    let allocated = project.budget_allocated.to_f64().unwrap_or(1.0);
+    let spent = project.budget_spent.to_f64().unwrap_or(0.0);
+    let budget_spent_percent = if allocated > 0.0 {
+        (spent / allocated) * 100.0
+    } else {
+        0.0
+    };
+
+    Ok(Json(ProjectStatsResponse {
+        project_id,
+        wells_completed,
+        active_teams,
+        budget_spent_percent,
+    }))
+}
+
