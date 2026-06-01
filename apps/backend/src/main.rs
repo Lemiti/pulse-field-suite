@@ -34,6 +34,9 @@ async fn main() {
 	models::SyncTaskUpdate::export().unwrap();
         models::SyncTableChanges::export().unwrap();
         models::SyncPushRequest::export().unwrap();
+	models::GenerateUploadUrlRequest::export().unwrap();
+        models::UploadUrlResponse::export().unwrap();
+        models::ConfirmUploadRequest::export().unwrap();
         
 
         let index_content = r#"
@@ -83,6 +86,8 @@ export * from './SyncPushRequest';
         .route("/api/tasks/:task_id/status", patch(api::tasks::update_task_status))
 	.route("/api/ai/suggest-phases", post(api::ai::suggest_phases))
 	.route("/api/sync", post(api::sync::push_sync))
+        .route("/api/media/upload-url", post(api::media::get_upload_url))
+        .route("/api/media/confirm", post(api::media::confirm_upload))
         .with_state(pool);
 
     // 4. Start Server

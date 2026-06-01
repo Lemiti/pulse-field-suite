@@ -5,3 +5,4 @@ pub mod tasks;
 pub mod audit_logs;
 pub mod ai;
 pub mod sync;
+pub mod media;

@@ -150,3 +150,29 @@ pub struct SyncPushRequest {
     pub changes: HashMap<String, SyncTableChanges>, // Map of table names (e.g., "tasks") to changes
     pub last_pulled_at: i64,
 }
+
+// --- MEDIA / PROOF OF WORK MODELS ---
+
+#[derive(Serialize, Deserialize, TS, Debug)]
+#[ts(export, export_to = "../../packages/shared-types/src/GenerateUploadUrlRequest.ts")]
+pub struct GenerateUploadUrlRequest {
+    pub task_id: Uuid,
+    pub mime_type: String, // e.g., "image/jpeg"
+    pub file_size: i64,
+}
+
+#[derive(Serialize, Deserialize, TS, Debug)]
+#[ts(export, export_to = "../../packages/shared-types/src/UploadUrlResponse.ts")]
+pub struct UploadUrlResponse {
+    pub upload_url: String,
+    pub file_id: String,
+}
+
+#[derive(Serialize, Deserialize, TS, Debug)]
+#[ts(export, export_to = "../../packages/shared-types/src/ConfirmUploadRequest.ts")]
+pub struct ConfirmUploadRequest {
+    pub task_id: Uuid,
+    pub file_id: String,
+    pub web_url: String,
+}
+
