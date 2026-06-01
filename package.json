@@ -1,0 +1,8 @@
+{
+  "name": "pulse-field-suite",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}

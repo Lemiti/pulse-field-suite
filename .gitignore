@@ -1,0 +1,34 @@
+# -------------------------------------------------------------------
+# Pulse-Field Monorepo .gitignore
+# -------------------------------------------------------------------
+
+# Environment Variables (CRITICAL: Never commit secrets)
+.env
+.env.*.local
+.env.local
+
+# Rust / Backend
+/apps/backend/target/
+**/*.rs.bk
+
+# Node / JS / Web / Mobile
+node_modules/
+npm-debug.log
+yarn-error.log
+dist/
+build/
+.expo/
+.next/
+
+# React Native / iOS / Android
+/apps/mobile/ios/Pods/
+/apps/mobile/ios/build/
+/apps/mobile/android/.gradle/
+/apps/mobile/android/app/build/
+/apps/mobile/android/build/
+
+# IDE & OS Files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
