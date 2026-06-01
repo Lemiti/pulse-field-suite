@@ -37,7 +37,8 @@ async fn main() {
 	models::GenerateUploadUrlRequest::export().unwrap();
         models::UploadUrlResponse::export().unwrap();
         models::ConfirmUploadRequest::export().unwrap();
-        
+	models::UpdateBudgetRequest::export().unwrap();        
+
 
         let index_content = r#"
 export * from './TaskStatus';
@@ -56,6 +57,10 @@ export * from './AIGenerateResponse';
 export * from './SyncTaskUpdate';
 export * from './SyncTableChanges';
 export * from './SyncPushRequest';
+export * from './GenerateUploadUrlRequest';
+export * from './UploadUrlResponse';
+export * from './ConfirmUploadRequest';
+export * from './UpdateBudgetRequest';
 "#;
         std::fs::write("../../packages/shared-types/src/index.ts", index_content.trim())
             .expect("Failed to write index.ts");
@@ -88,6 +93,7 @@ export * from './SyncPushRequest';
 	.route("/api/sync", post(api::sync::push_sync))
         .route("/api/media/upload-url", post(api::media::get_upload_url))
         .route("/api/media/confirm", post(api::media::confirm_upload))
+	.route("/api/projects/:project_id/budget", patch(api::projects::update_project_budget))
         .with_state(pool);
 
     // 4. Start Server

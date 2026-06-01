@@ -176,3 +176,10 @@ pub struct ConfirmUploadRequest {
     pub web_url: String,
 }
 
+#[derive(Serialize, Deserialize, TS, Debug)]
+#[ts(export, export_to = "../../packages/shared-types/src/UpdateBudgetRequest.ts")]
+pub struct UpdateBudgetRequest {
+    #[ts(type = "number")]
+    pub amount_spent: Decimal, // The new expense amount to add
+}
+
