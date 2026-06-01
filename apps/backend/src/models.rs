@@ -95,3 +95,32 @@ pub struct AuditLogResponse {
 pub struct UpdateTaskStatusRequest {
     pub status: TaskStatus,
 }
+
+// --- AI GENERATION MODELS ---
+
+#[derive(Serialize, Deserialize, TS, Debug)]
+#[ts(export, export_to = "../../packages/shared-types/src/AIGenerateRequest.ts")]
+pub struct AIGenerateRequest {
+    pub project_name: String,
+    pub description: String,
+}
+
+#[derive(Serialize, Deserialize, TS, Debug, Clone)]
+#[ts(export, export_to = "../../packages/shared-types/src/AITaskSuggestion.ts")]
+pub struct AITaskSuggestion {
+    pub name: String,
+    pub estimated_days: u32,
+}
+
+#[derive(Serialize, Deserialize, TS, Debug, Clone)]
+#[ts(export, export_to = "../../packages/shared-types/src/AIPhaseSuggestion.ts")]
+pub struct AIPhaseSuggestion {
+    pub name: String,
+    pub tasks: Vec<AITaskSuggestion>,
+}
+
+#[derive(Serialize, Deserialize, TS, Debug)]
+#[ts(export, export_to = "../../packages/shared-types/src/AIGenerateResponse.ts")]
+pub struct AIGenerateResponse {
+    pub phases: Vec<AIPhaseSuggestion>,
+}

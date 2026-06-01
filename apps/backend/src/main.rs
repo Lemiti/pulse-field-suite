@@ -27,6 +27,11 @@ async fn main() {
 	models::CreateTaskRequest::export().unwrap();
 	models::AuditLogResponse::export().unwrap();
 	models::UpdateTaskStatusRequest::export().unwrap(); 
+	models::AIGenerateRequest::export().unwrap();
+        models::AITaskSuggestion::export().unwrap();
+        models::AIPhaseSuggestion::export().unwrap();
+        models::AIGenerateResponse::export().unwrap();
+        
 
         let index_content = r#"
 export * from './TaskStatus';
@@ -38,6 +43,10 @@ export * from './CreateTaskRequest';
 export * from './UserClaims';
 export * from './AuditLogResponse';
 export * from './UpdateTaskStatusRequest';
+export * from './AIGenerateRequest';
+export * from './AITaskSuggestion';
+export * from './AIPhaseSuggestion';
+export * from './AIGenerateResponse';
 "#;
         std::fs::write("../../packages/shared-types/src/index.ts", index_content.trim())
             .expect("Failed to write index.ts");
@@ -66,6 +75,7 @@ export * from './UpdateTaskStatusRequest';
         .route("/api/tasks", post(api::tasks::create_task))
 	.route("/api/projects/:project_id/audit-logs", get(api::audit_logs::get_audit_logs))
         .route("/api/tasks/:task_id/status", patch(api::tasks::update_task_status))
+	.route("/api/ai/suggest-phases", post(api::ai::suggest_phases))
         .with_state(pool);
 
     // 4. Start Server
