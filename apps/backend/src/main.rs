@@ -3,7 +3,7 @@ mod api;
 mod models;
 
 use axum::{
-    routing::{get, post},
+    routing::{get, post, patch},
     Router,
 };
 use sqlx::postgres::PgPoolOptions;
@@ -24,14 +24,20 @@ async fn main() {
         models::CreateProjectRequest::export().unwrap();
         models::ProjectResponse::export().unwrap();
         api::auth::UserClaims::export().unwrap();
-        
+	models::CreateTaskRequest::export().unwrap();
+	models::AuditLogResponse::export().unwrap();
+	models::UpdateTaskStatusRequest::export().unwrap(); 
+
         let index_content = r#"
 export * from './TaskStatus';
 export * from './TaskResponse';
 export * from './ProjectStatus';
 export * from './CreateProjectRequest';
 export * from './ProjectResponse';
+export * from './CreateTaskRequest';
 export * from './UserClaims';
+export * from './AuditLogResponse';
+export * from './UpdateTaskStatusRequest';
 "#;
         std::fs::write("../../packages/shared-types/src/index.ts", index_content.trim())
             .expect("Failed to write index.ts");
@@ -56,6 +62,10 @@ export * from './UserClaims';
         // 🚀 NEW SECURE ROUTES:
         .route("/api/projects", get(api::projects::get_projects))
         .route("/api/projects", post(api::projects::create_project))
+        .route("/api/projects/:project_id/tasks", get(api::tasks::get_tasks))
+        .route("/api/tasks", post(api::tasks::create_task))
+	.route("/api/projects/:project_id/audit-logs", get(api::audit_logs::get_audit_logs))
+        .route("/api/tasks/:task_id/status", patch(api::tasks::update_task_status))
         .with_state(pool);
 
     // 4. Start Server

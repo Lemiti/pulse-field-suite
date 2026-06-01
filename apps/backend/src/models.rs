@@ -3,10 +3,12 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
 use rust_decimal::Decimal;
+use chrono::{DateTime, Utc};
 
 // --- TASK MODELS ---
 
-#[derive(Serialize, Deserialize, TS, Debug)]
+#[derive(Serialize, Deserialize, TS, Debug, sqlx::Type)] // <-- Added sqlx::Type
+#[sqlx(type_name = "task_status", rename_all = "SCREAMING_SNAKE_CASE")]
 #[allow(non_camel_case_types)]
 #[ts(export, export_to = "../../packages/shared-types/src/TaskStatus.ts")]
 pub enum TaskStatus {
@@ -63,4 +65,33 @@ pub struct ProjectResponse {
     pub status: ProjectStatus,
     #[ts(type = "string[]")]
     pub funding_sources: serde_json::Value, 
+}
+
+#[derive(Serialize, Deserialize, TS, Debug)]
+#[ts(export, export_to = "../../packages/shared-types/src/CreateTaskRequest.ts")]
+pub struct CreateTaskRequest {
+    pub project_id: Uuid,
+    pub phase_id: Option<Uuid>, // Nullable! This satisfies the "Uncategorized Bucket" SRS rule.
+    pub name: String,
+}
+
+// --- AUDIT LOG MODELS ---
+
+#[derive(Serialize, Deserialize, TS, Debug)]
+#[ts(export, export_to = "../../packages/shared-types/src/AuditLogResponse.ts")]
+pub struct AuditLogResponse {
+    pub id: Uuid,
+    pub project_id: Uuid,
+    pub user_id: Uuid,
+    pub action: String,
+    pub old_value: Option<String>,
+    pub new_value: Option<String>,
+    #[ts(type = "string")] // Tell TS this will arrive as an ISO-8601 string
+    pub created_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Serialize, Deserialize, TS, Debug)]
+#[ts(export, export_to = "../../packages/shared-types/src/UpdateTaskStatusRequest.ts")]
+pub struct UpdateTaskStatusRequest {
+    pub status: TaskStatus,
 }
