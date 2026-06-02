@@ -6,6 +6,7 @@ import MainLayout from './layout/MainLayout';
 import ProjectsList from './features/projects/ProjectsList';
 import ProjectDashboard from './features/projects/ProjectDashboard';
 import PlaceholderPage from './features/placeholder/PlaceholderPage';
+import Inbox from './features/inbox/Inbox';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -29,7 +30,8 @@ function App() {
               <Route path="projects" element={<ProjectsList />} />
               <Route path="projects/:projectId" element={<ProjectDashboard />} />
               <Route path="projects/:projectId/:tab" element={<ProjectDashboard />} />
-              <Route path="inbox" element={<PlaceholderPage title="Inbox" />} />
+              <Route path="inbox" element={<Inbox />} />
+              <Route path="inbox/:tab" element={<Inbox />} />
               <Route path="audit-logs" element={<PlaceholderPage title="Audit Logs" />} />
               <Route path="settings" element={<PlaceholderPage title="Settings" />} />
               <Route path="help" element={<PlaceholderPage title="Help" />} />

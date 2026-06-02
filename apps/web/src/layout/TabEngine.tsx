@@ -1,62 +1,53 @@
-import { NavLink, useParams } from 'react-router-dom';
-
-export interface TabDef {
-  label: string;
-  to: string;
-}
-
-// 🛡️ JWT DECODER: Lightweight extraction of claims role for dynamic tabs
-function getUserRole(): string {
-  const token = localStorage.getItem('token');
-  if (!token) return 'FIELD_OFFICER';
-  try {
-    const parts = token.split('.');
-    if (parts.length < 2) return 'FIELD_OFFICER';
-    const payload = JSON.parse(atob(parts[1]));
-    return payload.role || 'FIELD_OFFICER';
-  } catch (e) {
-    console.error("Failed to decode user role:", e);
-    return 'FIELD_OFFICER';
-  }
-}
+import { useLocation, Link } from 'react-router-dom';
 
 export default function TabEngine() {
-  const { projectId } = useParams<{ projectId: string }>();
-  const role = getUserRole();
+  const location = useLocation();
+  const path = location.pathname;
 
-  // Define tabs
-  const tabs: TabDef[] = [
-    { label: "Dashboard", to: "" },
-    { label: "Calendar", to: "calendar" },
-    { label: "Messages", to: "messages" },
-    { label: "Note", to: "note" },
-    { label: "Files", to: "files" },
-  ];
+  // 1. Define the Tab Configurations
+  const projectTabs = ['Dashboard', 'Calendar', 'Messages', 'Note', 'Files', 'Impact'];
+  const projectDirectoryTabs = ['Active', 'Archived', 'Templates'];
+  const inboxTabs = ['Unread', 'Messages'];
+  const globalTabs = ['Feed', 'Notifications'];
 
-  // Option C: Dynamically show/hide the Impact tab based on the active role
-  if (role === 'ADMIN' || role === 'PROJECT_MANAGER') {
-    tabs.push({ label: "Impact", to: "impact" });
+  // 2. Determine which context we are in based on the URL
+  let activeTabs = globalTabs;
+  
+  // Regex to check if we are inside a specific project (e.g., /projects/123-abc)
+  const isSingleProject = /^\/projects\/[a-zA-Z0-9-]+$/.test(path);
+
+  if (isSingleProject) {
+    activeTabs = projectTabs;
+  } else if (path === '/projects') {
+    activeTabs = projectDirectoryTabs; // Apply the new directory tabs
+  } else if (path.startsWith('/inbox')) {
+    activeTabs = inboxTabs;
   }
 
+  // 3. Determine active state
+  const searchParams = new URLSearchParams(location.search);
+  const currentTab = searchParams.get('tab') || activeTabs[0];
+
   return (
-    <div className="flex border-b border-slate-200/80 mb-6 select-none shrink-0">
-      {tabs.map((tab) => {
-        const path = tab.to ? `/projects/${projectId}/${tab.to}` : `/projects/${projectId}`;
+    <div className="h-12 bg-white dark:bg-[#0F172A] border-b border-slate-200 dark:border-slate-800 px-8 flex items-center gap-6 flex-shrink-0 z-0 overflow-x-auto hide-scrollbar">
+      {activeTabs.map((tab) => {
+        const isActive = currentTab === tab;
         return (
-          <NavLink
-            key={tab.label}
-            to={path}
-            end
-            className={({ isActive }) =>
-              `px-5 py-3 text-sm font-semibold border-b-2 -mb-[2px] transition-all duration-200 ${
-                isActive
-                  ? 'border-blue-600 text-blue-600 font-bold'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`
-            }
+          <Link
+            key={tab}
+            to={`${path}?tab=${tab}`}
+            className={`text-sm font-bold relative h-full flex items-center px-1 transition-colors ${
+              isActive 
+                ? 'text-blue-600 dark:text-blue-500' 
+                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
+            }`}
           >
-            {tab.label}
-          </NavLink>
+            {tab}
+            {/* Active Indicator Line */}
+            {isActive && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-500 rounded-t-full" />
+            )}
+          </Link>
         );
       })}
     </div>
