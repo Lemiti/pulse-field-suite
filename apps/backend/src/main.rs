@@ -91,6 +91,7 @@ export * from './ProjectStatsResponse';
         // 🚀 NEW SECURE ROUTES:
         .route("/api/projects", get(api::projects::get_projects))
         .route("/api/projects", post(api::projects::create_project))
+        .route("/api/projects/:project_id", get(api::projects::get_project))
         .route("/api/projects/:project_id/tasks", get(api::tasks::get_tasks))
         .route("/api/tasks", post(api::tasks::create_task))
 	.route("/api/projects/:project_id/audit-logs", get(api::audit_logs::get_audit_logs))

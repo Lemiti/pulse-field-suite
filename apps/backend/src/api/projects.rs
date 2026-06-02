@@ -36,6 +36,37 @@ pub async fn get_projects(
     Ok(Json(projects))
 }
 
+// GET /api/projects/:project_id
+pub async fn get_project(
+    State(pool): State<PgPool>,
+    claims: UserClaims, // 🛡️ AUTH GUARD
+    Path(project_id): Path<Uuid>,
+) -> Result<Json<ProjectResponse>, (StatusCode, String)> {
+    
+    // 🛡️ SECURITY: Verify the project belongs to the user's country
+    let project = sqlx::query_as!(
+        ProjectResponse,
+        r#"
+        SELECT 
+            id, country_id, name, description, 
+            budget_allocated, 
+            budget_spent, 
+            status as "status: ProjectStatus", 
+            funding_sources
+        FROM projects
+        WHERE id = $1 AND country_id = $2
+        "#,
+        project_id,
+        claims.country_id
+    )
+    .fetch_optional(&pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+    .ok_or((StatusCode::NOT_FOUND, "Project not found".to_string()))?;
+
+    Ok(Json(project))
+}
+
 // POST /api/projects
 pub async fn create_project(
     State(pool): State<PgPool>,
