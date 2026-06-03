@@ -1,14 +1,19 @@
 import { useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { X } from 'lucide-react';
 
 interface NewTaskModalProps {
-  projectId: string;
+  projectId?: string;
   onClose: () => void;
   onSuccess: () => void;
 }
 
 export default function NewTaskModal({ projectId, onClose, onSuccess }: NewTaskModalProps) {
+  const { projectId: routeProjectId } = useParams<{ projectId: string }>();
+  const queryClient = useQueryClient();
+  const activeProjectId = projectId || routeProjectId;
   const [name, setName] = useState('');
   const [assignedTo, setAssignedTo] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -40,12 +45,14 @@ export default function NewTaskModal({ projectId, onClose, onSuccess }: NewTaskM
     try {
       // POST to backend tasks creation API endpoint
       await api.post('/tasks', {
-        project_id: projectId,
+        project_id: activeProjectId,
         phase_id: null,
+        status: 'PLAN',
         name: name.trim(),
         assigned_to: assignedTo || null,
       });
 
+      queryClient.invalidateQueries({ queryKey: ['project-tasks', activeProjectId] });
       onSuccess();
     } catch (e: any) {
       console.error(e);

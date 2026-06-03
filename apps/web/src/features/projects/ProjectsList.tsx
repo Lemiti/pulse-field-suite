@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api';
+import BudgetStatusBar from './BudgetStatusBar';
+import { ProjectResponse } from '@pulse/shared-types';
 import {
   Folder,
   Plus,
@@ -16,26 +18,6 @@ import {
   ArrowUpRight,
 } from 'lucide-react';
 
-interface ProjectResponse {
-  id: string;
-  country_id: string;
-  name: string;
-  description: string | null;
-  budget_allocated: number;
-  budget_spent: number;
-  status: string;
-}
-
-interface AuditLog {
-  id: string;
-  project_id: string;
-  user_id: string;
-  action: string;
-  old_value: string | null;
-  new_value: string | null;
-  created_at: string;
-}
-
 export default function ProjectsList() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -48,26 +30,34 @@ export default function ProjectsList() {
   const [newProjBudget, setNewProjBudget] = useState('');
   const [newProjFunders, setNewProjFunders] = useState('');
 
-  // 1. Query projects
-  const { data: projects, isLoading, error } = useQuery<ProjectResponse[]>({
+  // 1. Query projects with defensive typing
+  const { data: projectsData, isLoading, error } = useQuery<ProjectResponse[]>({
     queryKey: ['projects'],
     queryFn: async () => {
       const res = await api.get('/projects');
-      return res.data;
+      // Defensive: Ensure response is an array
+      return Array.isArray(res.data) ? res.data : [];
     },
   });
+
+  // Safely access projects array
+  const projects = Array.isArray(projectsData) ? projectsData : [];
 
   // 2. Query dynamic stats per project to aggregate portfolio metrics
   // We can fetch the first project's audit logs to feed our live activity feed panel
   const firstProjectId = projects?.[0]?.id;
-  const { data: auditLogs } = useQuery<AuditLog[]>({
+  const { data: auditLogsData } = useQuery({
     queryKey: ['portfolio-audit-logs', firstProjectId],
     queryFn: async () => {
       const res = await api.get(`/projects/${firstProjectId}/audit-logs`);
-      return res.data;
+      // Defensive: Ensure response is an array
+      return Array.isArray(res.data) ? res.data : [];
     },
     enabled: !!firstProjectId,
   });
+
+  // Safely access audit logs array
+  const auditLogs = Array.isArray(auditLogsData) ? auditLogsData : [];
 
   // 3. Create Project Mutation
   const createProjectMutation = useMutation({
@@ -128,8 +118,14 @@ export default function ProjectsList() {
 
   // Calculated Portfolio statistics
   const totalProjects = projects?.length ?? 0;
-  const totalBudget = projects?.reduce((acc, p) => acc + p.budget_allocated, 0) ?? 0;
-  const totalSpent = projects?.reduce((acc, p) => acc + p.budget_spent, 0) ?? 0;
+  const totalBudget = projects?.reduce(
+    (acc, p) => acc + (Number((p as any).budget_allocated) || 0),
+    0
+  ) ?? 0;
+  const totalSpent = projects?.reduce(
+    (acc, p) => acc + (Number((p as any).budget_spent) || 0),
+    0
+  ) ?? 0;
   const portfolioSpentPercentage = totalBudget > 0 ? Math.round((totalSpent / totalBudget) * 100) : 0;
 
   // Filter projects by search query
@@ -241,58 +237,75 @@ export default function ProjectsList() {
 
           {/* Dynamic projects card list */}
           <div className="space-y-4">
-            {filteredProjects && filteredProjects.length > 0 ? (
+            {Array.isArray(filteredProjects) && filteredProjects.length > 0 ? (
               filteredProjects.map((p) => {
-                const spentPercent = p.budget_allocated > 0
-                  ? Math.round((p.budget_spent / p.budget_allocated) * 100)
-                  : 0;
+                // Defensive: Ensure numeric values are numbers
+                const allocatedBudget = typeof p.budget_allocated === 'number' ? p.budget_allocated : parseFloat(String(p.budget_allocated)) || 0;
+                const spentBudget = typeof p.budget_spent === 'number' ? p.budget_spent : parseFloat(String(p.budget_spent)) || 0;
 
                 return (
                   <div
                     key={p.id}
                     onClick={() => navigate(`/projects/${p.id}`)}
-                    className="bg-white border border-slate-200/70 hover:border-blue-500/20 rounded-xl p-5 flex items-center justify-between shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer group"
+                    className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-blue-500/20 dark:hover:border-blue-500/20 rounded-xl p-6 shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer group space-y-4"
                   >
-                    <div className="flex items-center gap-4 flex-1">
-                      <div className="p-3.5 bg-blue-50 group-hover:bg-blue-100 rounded-lg shrink-0 transition-colors">
-                        <Folder className="w-6 h-6 text-blue-600" />
+                    {/* Top row: Icon, Name, Description, Status Badge */}
+                    <div className="flex items-start gap-4">
+                      <div className="p-3 bg-blue-50 dark:bg-blue-950 group-hover:bg-blue-100 dark:group-hover:bg-blue-900 rounded-lg shrink-0 transition-colors">
+                        <Folder className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                       </div>
-                      <div className="space-y-1 max-w-md">
-                        <h3 className="text-lg font-extrabold text-slate-800 group-hover:text-blue-600 transition-colors">
+                      
+                      <div className="flex-1 space-y-2 min-w-0">
+                        <h3 className="text-lg font-extrabold text-slate-800 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">
                           {p.name}
                         </h3>
-                        <p className="text-slate-500 text-xs line-clamp-1">
+                        <p className="text-slate-500 dark:text-slate-400 text-sm line-clamp-2">
                           {p.description || 'No description provided.'}
                         </p>
                       </div>
+
+                      {/* Status Badge */}
+                      <div className="flex flex-col items-end gap-2 shrink-0">
+                        <span className="inline-flex items-center px-3 py-1 bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 text-xs font-extrabold rounded-full uppercase tracking-wider">
+                          {p.status}
+                        </span>
+                        <span className="p-1.5 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/30 group-hover:text-blue-600 dark:group-hover:text-blue-400 rounded-lg transition-all">
+                          <ArrowUpRight className="w-5 h-5" />
+                        </span>
+                      </div>
                     </div>
 
-                    {/* Progress tracking */}
-                    <div className="flex items-center gap-8 shrink-0">
-                      <div className="flex flex-col gap-1 w-28">
-                        <div className="flex justify-between text-[10px] font-bold text-slate-400">
-                          <span>UTILIZATION</span>
-                          <span className="text-slate-700">{spentPercent}%</span>
-                        </div>
-                        <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                          <div
-                            className="bg-blue-600 h-full rounded-full"
-                            style={{ width: `${Math.min(spentPercent, 100)}%` }}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Go directly button indicator */}
-                      <span className="p-1.5 bg-slate-50 text-slate-400 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-all">
-                        <ArrowUpRight className="w-5 h-5" />
-                      </span>
+                    {/* Budget Status Bar */}
+                    <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
+                      <BudgetStatusBar allocated={allocatedBudget} spent={spentBudget} />
                     </div>
                   </div>
                 );
               })
             ) : (
-              <div className="bg-white border border-slate-200 rounded-xl p-8 text-center text-slate-400 font-bold">
-                No matching field workspaces found.
+              <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-12 text-center space-y-4">
+                <div className="flex justify-center">
+                  <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-full">
+                    <Folder className="w-8 h-8 text-slate-400 dark:text-slate-500" />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-lg font-extrabold text-slate-700 dark:text-slate-300">
+                    No Active Workspaces
+                  </h3>
+                  <p className="text-slate-500 dark:text-slate-400 text-sm">
+                    {searchTerm 
+                      ? 'No projects match your search. Try different keywords.'
+                      : 'Create your first initiative to get started with field operations.'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsModalOpen(true)}
+                  className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-colors text-sm"
+                >
+                  <Plus className="w-4 h-4" />
+                  Create First Initiative
+                </button>
               </div>
             )}
           </div>
@@ -311,7 +324,7 @@ export default function ProjectsList() {
           </div>
 
           <ul className="space-y-6">
-            {auditLogs && auditLogs.length > 0 ? (
+            {Array.isArray(auditLogs) && auditLogs.length > 0 ? (
               auditLogs.slice(0, 5).map((log) => {
                 const formattedDate = new Date(log.created_at).toLocaleDateString(undefined, {
                   month: 'short',
@@ -321,23 +334,23 @@ export default function ProjectsList() {
                 });
 
                 return (
-                  <li key={log.id} className="relative pl-6 before:absolute before:left-1.5 before:top-1.5 before:bottom-[-24px] before:w-[2px] before:bg-slate-100 last:before:hidden">
-                    <span className="absolute left-0 top-1.5 w-3 h-3 bg-blue-600 border-2 border-white rounded-full shadow-sm shadow-blue-500/40" />
+                  <li key={log.id} className="relative pl-6 before:absolute before:left-1.5 before:top-1.5 before:bottom-[-24px] before:w-[2px] before:bg-slate-100 dark:before:bg-slate-700 last:before:hidden">
+                    <span className="absolute left-0 top-1.5 w-3 h-3 bg-blue-600 border-2 border-white dark:border-slate-900 rounded-full shadow-sm shadow-blue-500/40" />
                     <div className="space-y-1">
-                      <p className="text-xs text-slate-700 font-bold leading-normal">
+                      <p className="text-xs text-slate-700 dark:text-slate-200 font-bold leading-normal">
                         {log.action.replace(/_/g, ' ')}
                       </p>
-                      <div className="flex items-center gap-2 text-[10px] text-slate-400 font-semibold">
+                      <div className="flex items-center gap-2 text-[10px] text-slate-400 dark:text-slate-500 font-semibold">
                         <span>{formattedDate}</span>
                         <span>•</span>
-                        <span className="text-blue-500">ID: {log.user_id.slice(0, 8)}</span>
+                        <span className="text-blue-500 dark:text-blue-400">ID: {log.user_id.slice(0, 8)}</span>
                       </div>
                     </div>
                   </li>
                 );
               })
             ) : (
-              <div className="text-center py-6 text-xs text-slate-400 font-semibold">
+              <div className="text-center py-6 text-xs text-slate-400 dark:text-slate-500 font-semibold">
                 Waiting for field entry logs...
               </div>
             )}

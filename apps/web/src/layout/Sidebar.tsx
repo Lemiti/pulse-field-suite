@@ -3,7 +3,7 @@ import { Home, Mail, FolderKanban, History, Settings, HelpCircle, LogOut } from 
 
 export default function Sidebar() {
   const navItems = [
-    { name: 'Home', path: '/projects', icon: Home },
+    { name: 'Home', path: '/', icon: Home },
     { name: 'Inbox', path: '/inbox', icon: Mail },
     { name: 'Projects', path: '/projects', icon: FolderKanban },
     { name: 'Audit Logs', path: '/audit-logs', icon: History },
@@ -11,15 +11,15 @@ export default function Sidebar() {
   ];
 
   return (
-    <aside className="w-80 bg-[#232936] text-[#9ca3af] flex flex-col h-full select-none">
+    <aside className="w-80 bg-slate-50 dark:bg-[#0F172A] text-slate-600 dark:text-slate-400 flex flex-col h-full select-none border-r border-slate-200 dark:border-slate-800">
       {/* BRANDING HEADER */}
-      <div className="flex items-center gap-3 px-6 py-6 border-b border-slate-700/50">
+      <div className="flex items-center gap-3 px-6 py-6 border-b border-slate-200 dark:border-slate-800">
         <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white text-xl">
           c
         </div>
         <div className="flex flex-col">
-          <span className="text-white font-bold text-lg tracking-wide leading-tight">Client NGO</span>
-          <span className="text-xs text-gray-400 font-medium">Field Operations</span>
+          <span className="text-slate-900 dark:text-white font-bold text-lg tracking-wide leading-tight">Client NGO</span>
+          <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Field Operations</span>
         </div>
       </div>
 
@@ -29,18 +29,18 @@ export default function Sidebar() {
           <NavLink
             key={item.name}
             to={item.path}
-            end={item.path === '/projects'}
+            end={item.path === '/'} 
             className={({ isActive }) =>
               `flex items-center gap-4 px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
                 isActive
                   ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/10'
-                  : 'hover:bg-slate-800 hover:text-slate-200'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-slate-200'
               }`
             }
           >
             {({ isActive }) => (
               <>
-                <item.icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                <item.icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`} />
                 <span>{item.name}</span>
               </>
             )}
@@ -49,17 +49,19 @@ export default function Sidebar() {
       </nav>
 
       {/* FOOTER SECTION */}
-      <div className="p-4 border-t border-slate-700/30 space-y-4">
+      <div className="p-4 border-t border-slate-200 dark:border-slate-800 space-y-4">
         {/* Help Link */}
         <NavLink
           to="/help"
           className={({ isActive }) =>
             `flex items-center gap-4 px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
-              isActive ? 'bg-slate-800 text-white' : 'hover:bg-slate-800 hover:text-slate-200'
+              isActive 
+                ? 'bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-white' 
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-slate-200'
             }`
           }
         >
-          <HelpCircle className="w-5 h-5 text-slate-400" />
+          <HelpCircle className="w-5 h-5" />
           <span>Help</span>
         </NavLink>
 
@@ -67,11 +69,11 @@ export default function Sidebar() {
         <button
           onClick={() => {
             localStorage.removeItem('token');
-            window.location.reload();
+            window.location.href = '/login';
           }}
-          className="w-full flex items-center gap-4 px-4 py-3 rounded-lg text-sm font-bold bg-[#e0e7ff] text-[#1e1b4b] hover:bg-[#c7d2fe] transition-all duration-200"
+          className="w-full flex items-center gap-4 px-4 py-3 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200"
         >
-          <LogOut className="w-5 h-5 text-[#4338ca]" />
+          <LogOut className="w-5 h-5" />
           <span>Logout</span>
         </button>
       </div>
