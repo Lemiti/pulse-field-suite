@@ -393,7 +393,7 @@ export default function AIPhaseGenerator({
                 {/* PHASE HEADER */}
                 <button
                   onClick={() => handleTogglePhaseExpansion(phase.id)}
-                  className="w-full flex items-center justify-between bg-slate-100 dark:bg-slate-750 hover:bg-slate-150 dark:hover:bg-slate-700 p-4 transition-colors group"
+                  className="w-full flex items-center justify-between bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 p-4 transition-colors group"
                 >
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <ChevronDown
@@ -408,7 +408,7 @@ export default function AIPhaseGenerator({
                         handleUpdatePhaseName(phase.id, e.target.value)
                       }
                       onClick={(e) => e.stopPropagation()}
-                      className="flex-1 bg-transparent font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1 text-sm"
+                      className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1 text-sm"
                     />
                     <span className="text-xs font-medium text-slate-500 dark:text-slate-400 flex-shrink-0">
                       {selectedCount}/{phase.tasks.length}
@@ -436,7 +436,7 @@ export default function AIPhaseGenerator({
                       phase.tasks.map((task) => (
                         <div
                           key={task.id}
-                          className="flex items-start gap-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 transition-colors group"
+                          className="flex items-start gap-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors group border border-slate-100 dark:border-slate-700"
                         >
                           <input
                             type="checkbox"
@@ -457,7 +457,7 @@ export default function AIPhaseGenerator({
                                   e.target.value
                                 )
                               }
-                              className="w-full bg-transparent text-slate-900 dark:text-white font-medium text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1"
+                              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 text-slate-900 dark:text-slate-100 font-medium text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1"
                             />
                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                               Est. {task.estimated_days} days

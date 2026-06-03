@@ -1,30 +1,35 @@
 import { useLocation, Link } from 'react-router-dom';
+import { getUserClaims } from '../lib/auth';
+
+const PROJECT_TABS = ['Dashboard', 'Calendar', 'Messages', 'Note', 'Files', 'Impact'] as const;
+const DONOR_HIDDEN_TABS = new Set(['Messages', 'Note', 'Calendar']);
 
 export default function TabEngine() {
   const location = useLocation();
   const path = location.pathname;
 
-  // 1. Define the Tab Configurations
-  const projectTabs = ['Dashboard', 'Calendar', 'Messages', 'Note', 'Files', 'Impact'];
+  const claims = getUserClaims();
+  const projectTabs =
+    claims?.role === 'DONOR'
+      ? PROJECT_TABS.filter((tab) => !DONOR_HIDDEN_TABS.has(tab))
+      : [...PROJECT_TABS];
+
   const projectDirectoryTabs = ['Active', 'Archived', 'Templates'];
   const inboxTabs = ['Unread', 'Messages'];
   const globalTabs = ['Feed', 'Notifications'];
 
-  // 2. Determine which context we are in based on the URL
-  let activeTabs = globalTabs;
-  
-  // Regex to check if we are inside a specific project (e.g., /projects/123-abc)
+  let activeTabs: string[] = [...globalTabs];
+
   const isSingleProject = /^\/projects\/[a-zA-Z0-9-]+$/.test(path);
 
   if (isSingleProject) {
     activeTabs = projectTabs;
   } else if (path === '/projects') {
-    activeTabs = projectDirectoryTabs; // Apply the new directory tabs
+    activeTabs = projectDirectoryTabs;
   } else if (path.startsWith('/inbox')) {
     activeTabs = inboxTabs;
   }
 
-  // 3. Determine active state
   const searchParams = new URLSearchParams(location.search);
   const currentTab = searchParams.get('tab') || activeTabs[0];
 
@@ -37,13 +42,12 @@ export default function TabEngine() {
             key={tab}
             to={`${path}?tab=${tab}`}
             className={`text-sm font-bold relative h-full flex items-center px-1 transition-colors ${
-              isActive 
-                ? 'text-blue-600 dark:text-blue-500' 
+              isActive
+                ? 'text-blue-600 dark:text-blue-500'
                 : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
             }`}
           >
             {tab}
-            {/* Active Indicator Line */}
             {isActive && (
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-500 rounded-t-full" />
             )}

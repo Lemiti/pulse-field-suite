@@ -69,6 +69,7 @@ export default function Sidebar() {
         <button
           onClick={() => {
             localStorage.removeItem('token');
+            localStorage.removeItem('activeCountryId');
             window.location.href = '/login';
           }}
           className="w-full flex items-center gap-4 px-4 py-3 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200"

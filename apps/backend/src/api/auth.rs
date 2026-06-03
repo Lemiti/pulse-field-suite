@@ -1,7 +1,7 @@
 // apps/backend/src/api/auth.rs
 use axum::{
     async_trait,
-    extract::FromRequestParts,
+    extract::{FromRequestParts, Query},
     http::{request::Parts, StatusCode},
 };
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
@@ -54,15 +54,29 @@ where
     }
 }
 
+#[derive(Debug, Deserialize)]
+pub struct MockLoginQuery {
+    pub role: Option<String>,
+    pub country_id: Option<String>,
+}
+
 // --- MOCK LOGIN ROUTE FOR MVP ---
-// In a real app, this verifies a Google OAuth token. 
-// For our sprint, it just hands us a dummy token so we can test our API.
-pub async fn mock_login() -> String {
+pub async fn mock_login(Query(params): Query<MockLoginQuery>) -> String {
+    let country_id = params
+        .country_id
+        .as_deref()
+        .and_then(|id| Uuid::parse_str(id).ok())
+        .unwrap_or_else(|| Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap());
+
+    let role = params.role.unwrap_or_else(|| "ADMIN".to_string());
+
+    let sub = user_id_for_role(&role);
+
     let claims = UserClaims {
-        sub: Uuid::new_v4(), // Fake User ID
-        country_id: Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap(), // Fake Tenant ID
-        role: "ADMIN".to_string(),
-        exp: 10000000000, // Never expires
+        sub,
+        country_id,
+        role,
+        exp: 10000000000,
     };
 
     encode(
@@ -71,4 +85,14 @@ pub async fn mock_login() -> String {
         &EncodingKey::from_secret("SUPER_SECRET_MVP_KEY_CHANGE_IN_PROD".as_ref()),
     )
     .unwrap()
+}
+
+/// Maps mock-login roles to seeded `users.id` rows (FK-safe for messages, audit logs, media).
+fn user_id_for_role(role: &str) -> Uuid {
+    match role {
+        "ADMIN" => Uuid::parse_str("aaaaaaaa-0000-0000-0000-000000000001").unwrap(),
+        "PROJECT_MANAGER" => Uuid::parse_str("aaaaaaaa-0000-0000-0000-000000000002").unwrap(),
+        "DONOR" => Uuid::parse_str("aaaaaaaa-0000-0000-0000-000000000003").unwrap(),
+        _ => Uuid::parse_str("11111111-0000-0000-0000-000000000001").unwrap(),
+    }
 }

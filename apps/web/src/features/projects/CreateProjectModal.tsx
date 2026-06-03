@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api';
-import { CreateProjectRequest } from '@pulse/shared-types';
+import { CreateProjectRequest, CreateTaskRequest, CreatePhaseRequest } from '@pulse/shared-types';
+import { useActiveCountry } from '../auth/ActiveCountryContext';
+import { getApiErrorMessage } from '../../lib/errors';
 import AIPhaseGenerator, { SelectedPhase } from './AIPhaseGenerator';
 import { X, Loader2 } from 'lucide-react';
 
@@ -33,6 +35,7 @@ export default function CreateProjectModal({
 }: CreateProjectModalProps) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { activeCountryId } = useActiveCountry();
 
   // ============= STATE MANAGEMENT =============
   const [modalState, setModalState] = useState<ModalState>('form');
@@ -47,21 +50,49 @@ export default function CreateProjectModal({
 
   // ============= MUTATIONS =============
   const createProjectMutation = useMutation({
-    mutationFn: async (payload: CreateProjectRequest) => {
+    mutationFn: async ({
+      payload,
+      phases,
+    }: {
+      payload: CreateProjectRequest;
+      phases: SelectedPhase[];
+    }) => {
       const res = await api.post('/projects', payload);
-      return res.data as { id: string };
+      const project = res.data as { id: string };
+
+      for (let i = 0; i < phases.length; i++) {
+        const phase = phases[i];
+        const phasePayload: CreatePhaseRequest = {
+          name: phase.name,
+          sort_order: i,
+        };
+        const phaseRes = await api.post(`/projects/${project.id}/phases`, phasePayload);
+        const phaseId = (phaseRes.data as { id: string }).id;
+
+        for (const task of phase.tasks) {
+          const taskPayload: CreateTaskRequest = {
+            project_id: project.id,
+            phase_id: phaseId,
+            name: task.name,
+          };
+          await api.post('/tasks', taskPayload);
+        }
+      }
+
+      return project;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['projects', activeCountryId] });
+      queryClient.invalidateQueries({ queryKey: ['project-phases', data.id] });
+      queryClient.invalidateQueries({ queryKey: ['project-tasks', data.id] });
       setModalState('form');
       resetForm();
       onClose();
-      navigate(`/projects/${data.id}`);
+      navigate(`/projects/${data.id}?tab=Dashboard`);
     },
-    onError: (error: any) => {
-      alert(
-        error.response?.data?.error || 'Failed to create project. Please try again.'
-      );
+    onError: (error: unknown) => {
+      alert(getApiErrorMessage(error, 'Failed to create project. Please try again.'));
+      setModalState('form');
     },
   });
 
@@ -113,21 +144,21 @@ export default function CreateProjectModal({
   const handleCreateProject = () => {
     if (!validateForm()) return;
 
-    if (selectedPhases.length === 0) {
-      alert('Please generate and apply AI-suggested phases, or proceed without them.');
-      return;
-    }
-
     setModalState('submitting');
 
     const payload: CreateProjectRequest = {
       name: formState.projectName.trim(),
       description: formState.description.trim() || null,
       budget_allocated: parseFloat(formState.budget),
-      funding_sources: Array.from(formState.fundingSources),
+      funding_sources:
+        formState.fundingSources.size > 0
+          ? Array.from(formState.fundingSources)
+          : ['Client NGO Seed'],
+      focus_area: 'WASH',
+      location_metadata: null,
     };
 
-    createProjectMutation.mutate(payload);
+    createProjectMutation.mutate({ payload, phases: selectedPhases });
   };
 
   if (!isOpen) return null;
@@ -326,12 +357,8 @@ export default function CreateProjectModal({
               </button>
               <button
                 onClick={handleCreateProject}
-                disabled={createProjectMutation.isPending || selectedPhases.length === 0}
-                className={`px-6 py-2 rounded-lg font-medium text-sm transition-all ${
-                  selectedPhases.length > 0
-                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                    : 'bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-400 cursor-not-allowed'
-                }`}
+                disabled={createProjectMutation.isPending}
+                className="px-6 py-2 rounded-lg font-medium text-sm transition-all bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
               >
                 {createProjectMutation.isPending ? 'Creating...' : 'Create Project'}
               </button>

@@ -1,12 +1,14 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Briefcase, Shield, Eye } from "lucide-react";
+import { User, Briefcase, Shield, Eye, Globe } from "lucide-react";
 import { api } from "../../lib/api";
+import { TENANT_COUNTRIES, DEFAULT_COUNTRY_ID } from "../../lib/countries";
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [countryId, setCountryId] = useState(DEFAULT_COUNTRY_ID);
 
   const roles = [
     { id: "ADMIN", label: "System Admin (HQ)", icon: Shield, color: "text-purple-600 dark:text-purple-400" },
@@ -19,15 +21,15 @@ export const LoginPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      // Fetch token from proxy. We append the role to simulate backend RBAC generation.
-      const response = await api.get(`/auth/mock-login?role=${roleId}`);
-      
-      // Handle the raw string payload your Axum backend currently returns
+      const response = await api.get(`/auth/mock-login`, {
+        params: { role: roleId, country_id: countryId },
+      });
+
       const token = typeof response.data === "string" ? response.data : response.data.token;
-      
       localStorage.setItem("token", token);
-      navigate("/projects"); // Send directly to projects after login
-    } catch (err) {
+      localStorage.removeItem("activeCountryId");
+      navigate("/");
+    } catch {
       setError("Failed to connect to the backend server. Is Axum running on port 8080?");
     } finally {
       setLoading(false);
@@ -39,7 +41,29 @@ export const LoginPage: React.FC = () => {
       <div className="max-w-md w-full bg-white dark:bg-slate-900 rounded-xl shadow-lg p-8 border border-slate-200 dark:border-slate-800">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Pulse-Field Suite</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">Select a role to enter the ENA workspace</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">Select your region and role to enter the workspace</p>
+        </div>
+
+        <div className="mb-6">
+          <label className="flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+            <Globe className="w-4 h-4" />
+            Active Country
+          </label>
+          <select
+            value={countryId}
+            onChange={(e) => setCountryId(e.target.value)}
+            disabled={loading}
+            className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-sm rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+          >
+            {TENANT_COUNTRIES.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          <p className="text-[11px] text-slate-400 mt-2">
+            Your tenant is locked at login. All projects and messages use this region.
+          </p>
         </div>
 
         {error && (
@@ -62,7 +86,7 @@ export const LoginPage: React.FC = () => {
                   {label}
                 </span>
               </div>
-              <span className="text-xs text-slate-400">Login &rarr;</span>
+              <span className="text-xs text-slate-400">Login →</span>
             </button>
           ))}
         </div>

@@ -5,7 +5,7 @@ use rust_decimal::prelude::ToPrimitive;
 use uuid::Uuid;
 use crate::models::UpdateBudgetRequest;
 use crate::api::auth::UserClaims;
-use crate::models::{CreateProjectRequest, ProjectResponse, ProjectStatus, ProjectFocusArea};
+use crate::models::{CreateProjectRequest, ProjectResponse, ProjectStatus, ProjectFocusArea, PhaseResponse, CreatePhaseRequest};
 use crate::models::{
     FieldLogResponse, CreateFieldLogRequest, UpdateFieldLogRequest,
     ProjectMessageResponse, CreateProjectMessageRequest, ProjectImpactMetricResponse, UpdateImpactMetricRequest
@@ -287,8 +287,85 @@ pub async fn get_project_stats(
     }))
 }
 
-// apps/backend/src/api/projects.rs
-// ... add to the bottom of the file ...
+// ─── PROJECT PHASES ───────────────────────────────────────────────────────────
+
+// GET /api/projects/:project_id/phases
+pub async fn get_project_phases(
+    State(pool): State<PgPool>,
+    claims: UserClaims,
+    Path(project_id): Path<Uuid>,
+) -> Result<Json<Vec<PhaseResponse>>, (StatusCode, String)> {
+    let project_exists = sqlx::query_scalar!(
+        r#"SELECT EXISTS(SELECT 1 FROM projects WHERE id = $1 AND country_id = $2)"#,
+        project_id,
+        claims.country_id
+    )
+    .fetch_one(&pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+    .unwrap_or(false);
+
+    if !project_exists {
+        return Err((StatusCode::FORBIDDEN, "Access Denied or Project not found".to_string()));
+    }
+
+    let phases = sqlx::query_as!(
+        PhaseResponse,
+        r#"
+        SELECT id, project_id, name, sort_order
+        FROM phases
+        WHERE project_id = $1
+        ORDER BY sort_order ASC, created_at ASC
+        "#,
+        project_id
+    )
+    .fetch_all(&pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(Json(phases))
+}
+
+// POST /api/projects/:project_id/phases
+pub async fn create_project_phase(
+    State(pool): State<PgPool>,
+    claims: UserClaims,
+    Path(project_id): Path<Uuid>,
+    Json(payload): Json<CreatePhaseRequest>,
+) -> Result<Json<PhaseResponse>, (StatusCode, String)> {
+    let project_exists = sqlx::query_scalar!(
+        r#"SELECT EXISTS(SELECT 1 FROM projects WHERE id = $1 AND country_id = $2)"#,
+        project_id,
+        claims.country_id
+    )
+    .fetch_one(&pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+    .unwrap_or(false);
+
+    if !project_exists {
+        return Err((StatusCode::FORBIDDEN, "Access Denied or Project not found".to_string()));
+    }
+
+    let sort_order = payload.sort_order.unwrap_or(0);
+
+    let phase = sqlx::query_as!(
+        PhaseResponse,
+        r#"
+        INSERT INTO phases (project_id, name, sort_order)
+        VALUES ($1, $2, $3)
+        RETURNING id, project_id, name, sort_order
+        "#,
+        project_id,
+        payload.name,
+        sort_order
+    )
+    .fetch_one(&pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(Json(phase))
+}
 
 // ─── FIELD LOGS / NOTES ENDPOINTS ─────────────────────────────────────────────
 
