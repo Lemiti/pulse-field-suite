@@ -10,6 +10,14 @@ use sqlx::postgres::PgPoolOptions;
 use std::env;
 use std::net::SocketAddr;
 use ts_rs::TS;
+use crate::api::projects::{
+    get_projects, get_project, create_project, update_project_budget, get_project_stats,
+    // Phase 2: Notes & Messages Handlers
+    get_project_notes, create_project_note, update_project_note,
+    get_project_messages, create_project_message,
+    // Phase 3: Impact Analytics Handlers
+    get_project_impact_metrics, update_project_impact_metric
+};
 
 #[tokio::main]
 async fn main() {
@@ -24,22 +32,36 @@ async fn main() {
         models::CreateProjectRequest::export().unwrap();
         models::ProjectResponse::export().unwrap();
         api::auth::UserClaims::export().unwrap();
-	models::CreateTaskRequest::export().unwrap();
-	models::AuditLogResponse::export().unwrap();
-	models::UpdateTaskStatusRequest::export().unwrap(); 
-	models::AIGenerateRequest::export().unwrap();
+	    models::CreateTaskRequest::export().unwrap();
+	    models::AuditLogResponse::export().unwrap();
+	    models::UpdateTaskStatusRequest::export().unwrap(); 
+	    models::AIGenerateRequest::export().unwrap();
         models::AITaskSuggestion::export().unwrap();
         models::AIPhaseSuggestion::export().unwrap();
         models::AIGenerateResponse::export().unwrap();
-	models::SyncTaskUpdate::export().unwrap();
+	    models::SyncTaskUpdate::export().unwrap();
         models::SyncTableChanges::export().unwrap();
         models::SyncPushRequest::export().unwrap();
-	models::GenerateUploadUrlRequest::export().unwrap();
+	    models::GenerateUploadUrlRequest::export().unwrap();
         models::UploadUrlResponse::export().unwrap();
         models::ConfirmUploadRequest::export().unwrap();
-	models::UpdateBudgetRequest::export().unwrap();        
+	    models::UpdateBudgetRequest::export().unwrap();        
         models::AlertResponse::export().unwrap();
         models::ProjectStatsResponse::export().unwrap();
+
+        // ─── NEW BINDINGS FOR PHASES 1, 2, & 3 ──────────────────────────────────
+        models::ProjectFocusArea::export().unwrap();
+        models::Partner::export().unwrap();
+        models::ProjectPartner::export().unwrap();
+        models::FieldLogResponse::export().unwrap();
+        models::CreateFieldLogRequest::export().unwrap();
+        models::UpdateFieldLogRequest::export().unwrap();
+        models::ProjectMessageResponse::export().unwrap();
+        models::CreateProjectMessageRequest::export().unwrap();
+        models::GlobalMetricTemplate::export().unwrap();
+        models::ProjectImpactMetricResponse::export().unwrap();
+        models::UpdateImpactMetricRequest::export().unwrap();
+        models::WebhookDeliveryQueueItem::export().unwrap();
 
 
 
@@ -66,6 +88,18 @@ export * from './ConfirmUploadRequest';
 export * from './UpdateBudgetRequest';
 export * from './AlertResponse';
 export * from './ProjectStatsResponse';
+export * from './ProjectFocusArea';
+export * from './Partner';
+export * from './ProjectPartner';
+export * from './FieldLogResponse';
+export * from './CreateFieldLogRequest';
+export * from './UpdateFieldLogRequest';
+export * from './ProjectMessageResponse';
+export * from './CreateProjectMessageRequest';
+export * from './GlobalMetricTemplate';
+export * from './ProjectImpactMetricResponse';
+export * from './UpdateImpactMetricRequest';
+export * from './WebhookDeliveryQueueItem';
 
 "#;
         std::fs::write("../../packages/shared-types/src/index.ts", index_content.trim())
@@ -94,15 +128,24 @@ export * from './ProjectStatsResponse';
         .route("/api/projects/:project_id", get(api::projects::get_project))
         .route("/api/projects/:project_id/tasks", get(api::tasks::get_tasks))
         .route("/api/tasks", post(api::tasks::create_task))
-	.route("/api/projects/:project_id/audit-logs", get(api::audit_logs::get_audit_logs))
+	    .route("/api/projects/:project_id/audit-logs", get(api::audit_logs::get_audit_logs))
         .route("/api/tasks/:task_id/status", patch(api::tasks::update_task_status))
-	.route("/api/ai/suggest-phases", post(api::ai::suggest_phases))
-	.route("/api/sync", post(api::sync::push_sync))
+	    .route("/api/ai/suggest-phases", post(api::ai::suggest_phases))
+	    .route("/api/sync", post(api::sync::push_sync))
         .route("/api/media/upload-url", post(api::media::get_upload_url))
         .route("/api/media/confirm", post(api::media::confirm_upload))
-	.route("/api/projects/:project_id/budget", patch(api::projects::update_project_budget))
+	    .route("/api/projects/:project_id/budget", patch(api::projects::update_project_budget))
         .route("/api/projects/:project_id/alerts", get(api::alerts::get_alerts))
         .route("/api/projects/:project_id/stats", get(api::projects::get_project_stats))
+        // ─── NEW PHASE 2 ENDPOINTS (NOTES & MESSAGES) ─────────────────────────
+        .route("/api/projects/:project_id/notes", get(api::projects::get_project_notes).post(api::projects::create_project_note))
+        .route("/api/projects/:project_id/notes/:note_id", patch(api::projects::update_project_note))
+        .route("/api/projects/:project_id/messages", get(api::projects::get_project_messages).post(api::projects::create_project_message))
+
+        // ─── NEW PHASE 3 ENDPOINTS (IMPACT METRICS) ────────────────────────────
+        .route("/api/projects/:project_id/impact", get(api::projects::get_project_impact_metrics))
+        .route("/api/projects/:project_id/impact/:metric_id", patch(api::projects::update_project_impact_metric))
+
         .layer(axum::middleware::from_fn(cors_middleware))
         .with_state(pool);
 

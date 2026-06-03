@@ -30,6 +30,18 @@ pub struct TaskResponse {
 
 // --- PROJECT MODELS ---
 
+#[derive(Serialize, Deserialize, TS, Debug, sqlx::Type, Clone, Copy, PartialEq, Eq)]
+#[sqlx(type_name = "project_focus_area", rename_all = "SCREAMING_SNAKE_CASE")]
+#[allow(non_camel_case_types)]
+#[ts(export, export_to = "../../../packages/shared-types/src/ProjectFocusArea.ts")]
+pub enum ProjectFocusArea {
+    EDUCATION,
+    HEALTH,
+    WASH,
+    EMPOWERMENT,
+    TRAFFICKING,
+}
+
 #[derive(Serialize, Deserialize, TS, Debug, sqlx::Type)]
 #[sqlx(type_name = "project_status", rename_all = "SCREAMING_SNAKE_CASE")]
 #[allow(non_camel_case_types)]
@@ -49,6 +61,9 @@ pub struct CreateProjectRequest {
     #[ts(type = "number")]
     pub budget_allocated: Decimal,
     pub funding_sources: Vec<String>,
+    pub focus_area: ProjectFocusArea,         // Added
+    #[ts(type = "any")]
+    pub location_metadata: serde_json::Value, // Added (e.g. {"region": "Oromia", "woreda": "Bishoftu"})
 }
 
 #[derive(Serialize, Deserialize, TS, Debug)]
@@ -64,7 +79,10 @@ pub struct ProjectResponse {
     pub budget_spent: Decimal,
     pub status: ProjectStatus,
     #[ts(type = "string[]")]
-    pub funding_sources: serde_json::Value, 
+    pub funding_sources: serde_json::Value,
+    pub focus_area: ProjectFocusArea,         // Added
+    #[ts(type = "any")]
+    pub location_metadata: serde_json::Value, // Added
 }
 
 #[derive(Serialize, Deserialize, TS, Debug)]
@@ -206,4 +224,114 @@ pub struct ProjectStatsResponse {
     pub budget_spent_percent: f64,
 }
 
+// --- PARTNER MODELS ---
 
+#[derive(Serialize, Deserialize, TS, Debug, sqlx::FromRow, Clone)]
+#[ts(export, export_to = "../../../packages/shared-types/src/Partner.ts")]
+pub struct Partner {
+    pub id: Uuid,
+    pub name: String,
+    pub r#type: String, // e.g., 'GOVERNMENT', 'FOUNDATION', 'PRIVATE_DONOR'
+    pub country_id: Option<Uuid>,
+}
+
+#[derive(Serialize, Deserialize, TS, Debug, sqlx::FromRow, Clone)]
+#[ts(export, export_to = "../../../packages/shared-types/src/ProjectPartner.ts")]
+pub struct ProjectPartner {
+    pub project_id: Uuid,
+    pub partner_id: Uuid,
+    #[ts(type = "number")]
+    pub contribution_amount: Decimal,
+}
+
+
+// --- NOTES (FIELD LOGS) & MESSAGES MODELS ---
+
+#[derive(Serialize, Deserialize, TS, Debug, sqlx::FromRow, Clone)]
+#[ts(export, export_to = "../../../packages/shared-types/src/FieldLogResponse.ts")]
+pub struct FieldLogResponse {
+    pub id: Uuid,
+    pub project_id: Uuid,
+    pub author_id: Uuid,
+    pub content: String,
+    pub is_edited: bool,
+    #[ts(type = "string")]
+    pub created_at: Option<DateTime<Utc>>,
+    #[ts(type = "string")]
+    pub updated_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Serialize, Deserialize, TS, Debug, Clone)]
+#[ts(export, export_to = "../../../packages/shared-types/src/CreateFieldLogRequest.ts")]
+pub struct CreateFieldLogRequest {
+    pub content: String,
+}
+
+#[derive(Serialize, Deserialize, TS, Debug, Clone)]
+#[ts(export, export_to = "../../../packages/shared-types/src/UpdateFieldLogRequest.ts")]
+pub struct UpdateFieldLogRequest {
+    pub content: String,
+}
+
+#[derive(Serialize, Deserialize, TS, Debug, sqlx::FromRow, Clone)]
+#[ts(export, export_to = "../../../packages/shared-types/src/ProjectMessageResponse.ts")]
+pub struct ProjectMessageResponse {
+    pub id: Uuid,
+    pub project_id: Uuid,
+    pub sender_id: Uuid,
+    pub content: String,
+    #[ts(type = "string")]
+    pub created_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Serialize, Deserialize, TS, Debug, Clone)]
+#[ts(export, export_to = "../../../packages/shared-types/src/CreateProjectMessageRequest.ts")]
+pub struct CreateProjectMessageRequest {
+    pub content: String,
+}
+
+
+
+// --- IMPACT ANALYTICS & WEBHOOK MODELS ---
+
+#[derive(Serialize, Deserialize, TS, Debug, sqlx::FromRow, Clone)]
+#[ts(export, export_to = "../../../packages/shared-types/src/GlobalMetricTemplate.ts")]
+pub struct GlobalMetricTemplate {
+    pub id: Uuid,
+    pub code: String,
+    pub display_name: String,
+    pub unit: String,
+}
+
+#[derive(Serialize, Deserialize, TS, Debug, sqlx::FromRow, Clone)]
+#[ts(export, export_to = "../../../packages/shared-types/src/ProjectImpactMetricResponse.ts")]
+pub struct ProjectImpactMetricResponse {
+    pub id: Uuid,
+    pub project_id: Uuid,
+    pub metric_template_id: Uuid,
+    pub target_value: i32,
+    pub current_value: i32,
+    pub is_manual_override: bool,
+    #[ts(type = "string")]
+    pub created_at: Option<DateTime<Utc>>,
+    #[ts(type = "string")]
+    pub updated_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Serialize, Deserialize, TS, Debug, Clone)]
+#[ts(export, export_to = "../../../packages/shared-types/src/UpdateImpactMetricRequest.ts")]
+pub struct UpdateImpactMetricRequest {
+    pub current_value: i32,
+}
+
+#[derive(Serialize, Deserialize, TS, Debug, sqlx::FromRow, Clone)]
+#[ts(export, export_to = "../../../packages/shared-types/src/WebhookDeliveryQueueItem.ts")]
+pub struct WebhookDeliveryQueueItem {
+    pub id: Uuid,
+    #[ts(type = "any")] 
+    pub payload: serde_json::Value,
+    pub retry_count: i32,
+    #[ts(type = "string")]
+    pub next_attempt_at: Option<DateTime<Utc>>,
+    pub status: String,
+}
