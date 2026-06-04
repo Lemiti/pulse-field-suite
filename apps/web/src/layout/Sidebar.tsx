@@ -4,7 +4,7 @@ import { brand } from '../config/brand';
 
 export default function Sidebar() {
   const navItems = [
-    { name: 'Home', path: '/', icon: Home },
+    { name: 'Home', path: '/home', icon: Home },
     { name: 'Inbox', path: '/inbox', icon: Mail },
     { name: 'Projects', path: '/projects', icon: FolderKanban },
     { name: 'Audit Logs', path: '/audit-logs', icon: History },
@@ -36,7 +36,7 @@ export default function Sidebar() {
           <NavLink
             key={item.name}
             to={item.path}
-            end={item.path === '/'} 
+            end={item.path === '/home'} 
             className={({ isActive }) =>
               `flex min-h-12 items-center gap-3 rounded-[8px] px-3.5 text-sm font-semibold transition-all duration-200 ${
                 isActive

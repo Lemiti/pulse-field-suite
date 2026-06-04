@@ -29,11 +29,11 @@ function App() {
         <SyncManager />
         <BrowserRouter>
           <Routes>
-            <Route path="/landing" element={<Landing />} />
+            <Route path="/" element={<Landing />} />
             <Route path="/login" element={<LoginPage />} />
-              <Route element={<ProtectedRoute />}>
-                <Route path="/" element={<MainLayout />}>
-                <Route index element={<Home />} />
+            <Route element={<ProtectedRoute />}>
+              <Route element={<MainLayout />}>
+                <Route path="/home" element={<Home />} />
                 <Route path="projects" element={<ProjectsList />} />
                 <Route path="projects/:projectId" element={<ProjectDashboard />} />
                 <Route path="projects/:projectId/:tab" element={<ProjectDashboard />} />

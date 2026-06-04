@@ -29,7 +29,7 @@ export const LoginPage: React.FC = () => {
       const token = typeof response.data === "string" ? response.data : response.data.token;
       localStorage.setItem("token", token);
       localStorage.removeItem("activeCountryId");
-      navigate("/");
+      navigate("/home");
     } catch {
       setError("Failed to connect to the backend server. Is Axum running on port 8080?");
     } finally {
