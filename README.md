@@ -1,3 +1,4 @@
+
 This represents the exact file structure of the **Pulse-Field Suite** web application, incorporating the modifications, additions, and new feature files established throughout our planning and implementation:
 
 ```text
@@ -50,3 +51,37 @@ pulse-field-suite/
         ├── tsconfig.json
         └── vite.config.ts          # Corrected proxy config pointing to :8080
 ```
+
+## How to run
+1. First configure the database
+to create and run the database in docker 
+```bash
+docker run --name pulse-db \
+  -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=pulse_field \
+  -p 5432:5432 \
+  -d postgres
+```
+
+```bash
+docker start pulse_field
+```
+
+to check running in docker
+```docker
+docker ps
+```
+
+2. Second run the backend
+   ```bash
+   cd app/backend/
+   ```
+   create the database schematic and populate with some data
+   ```bash
+   sqlx migrate
+   ```
+   to run the backend
+   ```bash
+   cargo run
+   ```
+
