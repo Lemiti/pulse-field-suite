@@ -19,7 +19,6 @@ import {
   UpdateTaskStatusRequest,
 } from '@pulse/shared-types';
 import ProjectTaskBoard, { NEXT_STATUS, STATUS_CONFIG } from './ProjectTaskBoard';
-import { Loader2 } from 'lucide-react';
 
 export default function ProjectDashboard() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -248,7 +247,6 @@ interface StatusTransitionPopoverProps {
 }
 
 function StatusTransitionPopover({
-  taskId,
   position,
   task,
   onStatusSelect,

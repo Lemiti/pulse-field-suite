@@ -9,7 +9,7 @@ export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [countryId, setCountryId] = useState(DEFAULT_COUNTRY_ID);
+  const [countryId, setCountryId] = useState<string>(DEFAULT_COUNTRY_ID);
 
   const roles = [
     { id: "ADMIN", label: "System Admin (HQ)", icon: Shield, color: "text-purple-600 dark:text-purple-400" },

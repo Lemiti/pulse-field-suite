@@ -247,7 +247,7 @@ export default function Landing() {
               'Ministry of Water and Energy',
               'Ministry of Women and Children Affairs',
               'Ministry of Justice',
-            ].map((ministry, i) => (
+            ].map((ministry) => (
               <div key={ministry} className="flex items-stretch group">
                 <div className="w-0.5 bg-slate-200 group-hover:bg-[#1273de] transition-colors duration-300 mr-5 flex-shrink-0" />
                 <div className="py-4 flex-1 border-b border-slate-100 last:border-b-0">
