@@ -65,6 +65,9 @@ async fn main() {
         models::WebhookDeliveryQueueItem::export().unwrap();
         models::PhaseResponse::export().unwrap();
         models::CreatePhaseRequest::export().unwrap();
+        models::BvaProjectSummary::export().unwrap();
+        models::ImpactMetricSummary::export().unwrap();
+        models::ReportSummaryResponse::export().unwrap();
 
 
 
@@ -105,6 +108,9 @@ export * from './UpdateImpactMetricRequest';
 export * from './WebhookDeliveryQueueItem';
 export * from './PhaseResponse';
 export * from './CreatePhaseRequest';
+export * from './BvaProjectSummary';
+export * from './ImpactMetricSummary';
+export * from './ReportSummaryResponse';
 
 "#;
         std::fs::write("../../packages/shared-types/src/index.ts", index_content.trim())
@@ -135,6 +141,7 @@ export * from './CreatePhaseRequest';
         .route("/api/projects/:project_id/phases", get(get_project_phases).post(create_project_phase))
         .route("/api/tasks", post(api::tasks::create_task))
 	    .route("/api/projects/:project_id/audit-logs", get(api::audit_logs::get_audit_logs))
+        .route("/api/reports/summary", get(api::reports::get_report_summary))
         .route("/api/tasks/:task_id/status", patch(api::tasks::update_task_status))
 	    .route("/api/ai/suggest-phases", post(api::ai::suggest_phases))
 	    .route("/api/sync", post(api::sync::push_sync))

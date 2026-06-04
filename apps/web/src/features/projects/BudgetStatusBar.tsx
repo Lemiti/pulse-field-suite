@@ -223,7 +223,7 @@ export default function BudgetStatusBar({ allocated, spent, projectId }: BudgetS
         <BudgetBar
           allocated={alloc}
           spent={spnt}
-          showExpenseButton
+          showExpenseButton={project?.status !== 'COMPLETED'}
           onAddExpense={() => setDialogOpen(true)}
           isPending={budgetMutation.isPending}
         />

@@ -8,6 +8,7 @@ import ProjectsList from './features/projects/ProjectsList';
 import ProjectDashboard from './features/projects/ProjectDashboard';
 import PlaceholderPage from './features/placeholder/PlaceholderPage';
 import AuditLogs from './features/audit_logs/AuditLogs';
+import Reports from './features/reports/Reports';
 import Inbox from './features/inbox/Inbox';
 import { ActiveCountryProvider } from "./features/auth/ActiveCountryContext";
 import SyncManager from "./features/sync/SyncManager";
@@ -39,6 +40,7 @@ function App() {
                 <Route path="inbox" element={<Inbox />} />
                 <Route path="inbox/:tab" element={<Inbox />} />
                 <Route path="audit-logs" element={<AuditLogs />} />
+                <Route path="reports" element={<Reports />} />
                 <Route path="settings" element={<PlaceholderPage title="Settings" />} />
                 <Route path="help" element={<PlaceholderPage title="Help" />} />
               </Route>

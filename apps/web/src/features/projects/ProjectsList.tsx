@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../../lib/api';
 import BudgetStatusBar from './BudgetStatusBar';
 import CreateProjectModal from './CreateProjectModal';
@@ -17,6 +17,7 @@ import {
   Activity,
   Sparkles,
   ArrowUpRight,
+  Archive,
 } from 'lucide-react';
 
 function clampPercentage(value: number): number {
@@ -54,14 +55,17 @@ function ProjectProgressBar({ percentage }: { percentage: number }) {
 
 export default function ProjectsList() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const currentTab = searchParams.get('tab') || 'Active';
   const { activeCountryId } = useActiveCountry();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const { data: projectsData, isLoading, error } = useQuery<ProjectResponse[]>({
-    queryKey: ['projects', activeCountryId],
+    queryKey: ['projects', activeCountryId, currentTab],
     queryFn: async () => {
-      const res = await api.get('/projects');
+      const url = currentTab === 'Archived' ? '/projects?status=COMPLETED' : '/projects';
+      const res = await api.get(url);
       return Array.isArray(res.data) ? res.data : [];
     },
   });
@@ -89,12 +93,22 @@ export default function ProjectsList() {
     );
   }
 
-  const totalProjects = projects.length;
-  const totalBudget = projects.reduce((acc, p) => acc + (Number(p.budget_allocated) || 0), 0);
-  const totalSpent = projects.reduce((acc, p) => acc + (Number(p.budget_spent) || 0), 0);
+  const displayProjects = projects.filter((p) => {
+    if (currentTab === 'Archived') {
+      return p.status === 'COMPLETED';
+    } else if (currentTab === 'Templates') {
+      return false; // Placeholder for templates tab
+    } else {
+      return p.status !== 'COMPLETED';
+    }
+  });
+
+  const totalProjectsCount = displayProjects.length;
+  const totalBudget = displayProjects.reduce((acc, p) => acc + (Number(p.budget_allocated) || 0), 0);
+  const totalSpent = displayProjects.reduce((acc, p) => acc + (Number(p.budget_spent) || 0), 0);
   const portfolioSpentPercentage = totalBudget > 0 ? Math.round((totalSpent / totalBudget) * 100) : 0;
 
-  const filteredProjects = projects.filter(
+  const filteredProjects = displayProjects.filter(
     (p) =>
       p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (p.description && p.description.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -116,29 +130,41 @@ export default function ProjectsList() {
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-xs font-bold uppercase tracking-wider text-blue-200">
-              <Sparkles className="w-3.5 h-3.5" />
-              NGO Command Center
+              {currentTab === 'Archived' ? (
+                <Archive className="w-3.5 h-3.5" />
+              ) : (
+                <Sparkles className="w-3.5 h-3.5" />
+              )}
+              {currentTab === 'Archived' ? 'Compliance Archives' : 'NGO Command Center'}
             </div>
-            <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">Active Workspaces</h1>
+            <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">
+              {currentTab === 'Archived' ? 'Archived Initiatives' : 'Active Workspaces'}
+            </h1>
             <p className="text-blue-100 text-sm max-w-xl">
-              Manage field initiatives for your tenant. Use AI phase generation when creating a project.
+              {currentTab === 'Archived'
+                ? 'Review final financials and impact metrics of completed projects in read-only compliance access.'
+                : 'Manage field initiatives for your tenant. Use AI phase generation when creating a project.'}
             </p>
           </div>
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center justify-center gap-2 bg-white hover:bg-slate-100 text-[#0f172a] font-extrabold text-sm px-6 py-4 rounded-xl shadow-lg transition-all shrink-0"
-          >
-            <Plus className="w-5 h-5 text-blue-600" />
-            <span>Create New Initiative</span>
-          </button>
+          {currentTab !== 'Archived' && currentTab !== 'Templates' && (
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="flex items-center justify-center gap-2 bg-white hover:bg-slate-100 text-[#0f172a] font-extrabold text-sm px-6 py-4 rounded-xl shadow-lg transition-all shrink-0"
+            >
+              <Plus className="w-5 h-5 text-blue-600" />
+              <span>Create New Initiative</span>
+            </button>
+          )}
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm flex items-center justify-between">
           <div className="space-y-1">
-            <span className="text-slate-400 font-extrabold text-xs tracking-wider uppercase">Active Initiatives</span>
-            <h2 className="text-3xl font-extrabold text-slate-800 dark:text-white">{totalProjects}</h2>
+            <span className="text-slate-400 font-extrabold text-xs tracking-wider uppercase">
+              {currentTab === 'Archived' ? 'Archived Initiatives' : 'Active Initiatives'}
+            </span>
+            <h2 className="text-3xl font-extrabold text-slate-800 dark:text-white">{totalProjectsCount}</h2>
           </div>
           <Briefcase className="w-6 h-6 text-blue-600" />
         </div>

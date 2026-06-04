@@ -13,6 +13,7 @@ import MessagesTab from './MessagesTab';
 import ImpactTab from '../impact/ImpactTab';
 import FilesTab from '../impact/FilesTab';
 import PlaceholderPage from '../placeholder/PlaceholderPage';
+import ProjectGantt from './ProjectGantt';
 import { useActiveCountry } from '../auth/ActiveCountryContext';
 import {
   PhaseResponse,
@@ -21,9 +22,10 @@ import {
   TaskResponse,
   TaskStatus,
   UpdateTaskStatusRequest,
+  ProjectImpactMetricResponse,
 } from '@pulse/shared-types';
 import ProjectTaskBoard, { NEXT_STATUS, STATUS_CONFIG } from './ProjectTaskBoard';
-import { Loader2, X } from 'lucide-react';
+import { Loader2, X, Archive, Landmark, Target } from 'lucide-react';
 
 const createPhaseSchema = z.object({
   name: z.string().trim().min(1, 'Phase name is required').max(255, 'Phase name is too long'),
@@ -81,6 +83,15 @@ export default function ProjectDashboard() {
       return Array.isArray(res.data) ? res.data : [];
     },
     enabled: !!projectId,
+  });
+
+  const { data: impactMetrics = [] } = useQuery<ProjectImpactMetricResponse[]>({
+    queryKey: ['project-impact', projectId, activeCountryId],
+    queryFn: async () => {
+      const res = await api.get(`/projects/${projectId}/impact`);
+      return Array.isArray(res.data) ? res.data : [];
+    },
+    enabled: !!projectId && project?.status === 'COMPLETED',
   });
 
   // ============= MUTATIONS =============
@@ -169,7 +180,16 @@ export default function ProjectDashboard() {
     if (!projectId) return null;
     switch (currentTab) {
       case 'Calendar':
-        return <PlaceholderPage title="Calendar" />;
+        return (
+          <ProjectGantt
+            projectId={projectId}
+            tasks={tasks}
+            phases={phases}
+            isUpdating={updateTaskStatusMutation.isPending}
+            onStatusChange={handleStatusChange}
+            readOnly={project?.status === 'COMPLETED'}
+          />
+        );
       case 'Messages':
         return <MessagesTab projectId={projectId} />;
       case 'Note':
@@ -226,15 +246,122 @@ export default function ProjectDashboard() {
           </p>
         </div>
 
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white font-bold text-sm px-6 py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex-shrink-0"
-        >
-          New Entry
-        </button>
+        {project?.status !== 'COMPLETED' && (
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white font-bold text-sm px-6 py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex-shrink-0"
+          >
+            New Entry
+          </button>
+        )}
       </div>
 
-      {projectId && (
+      {/* ARCHIVE LOCK BANNER */}
+      {project?.status === 'COMPLETED' && (
+        <div className="bg-slate-100 dark:bg-slate-800/80 border-l-4 border-slate-500 text-slate-700 dark:text-slate-350 p-4 rounded-r-xl flex items-center justify-between shadow-sm animate-fade-in">
+          <div className="flex items-center gap-3">
+            <Archive className="w-5 h-5 text-slate-500" />
+            <div>
+              <p className="text-sm font-extrabold uppercase tracking-wide">Archived Initiative</p>
+              <p className="text-xs opacity-90 mt-0.5">This project is officially closed. All information is presented in read-only compliance mode.</p>
+            </div>
+          </div>
+          <span className="text-[10px] bg-slate-200 dark:bg-slate-700 font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider">
+            Read-Only
+          </span>
+        </div>
+      )}
+
+      {/* COMPLETED/ARCHIVED FINANCIAL AND IMPACT METRICS */}
+      {project?.status === 'COMPLETED' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in">
+          {/* COLUMN 1: FINAL FINANCIAL METRICS */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm space-y-4">
+            <h3 className="text-base font-extrabold text-slate-800 dark:text-white flex items-center gap-2">
+              <Landmark className="w-5 h-5 text-blue-600" />
+              Final Financial Metrics
+            </h3>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-lg border border-slate-100 dark:border-slate-800/40">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Allocated Budget</span>
+                  <span className="text-xl font-extrabold text-slate-800 dark:text-white mt-1 block">
+                    ${(Number(project?.budget_allocated) || 0).toLocaleString()}
+                  </span>
+                </div>
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-lg border border-slate-100 dark:border-slate-800/40">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Final Spent Amount</span>
+                  <span className="text-xl font-extrabold text-slate-800 dark:text-white mt-1 block">
+                    ${(Number(project?.budget_spent) || 0).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+
+              {/* Financial Progress & Variance bar */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs font-semibold">
+                  <span className="text-slate-500">Budget Utilization</span>
+                  <span className={Number(project?.budget_spent) > Number(project?.budget_allocated) ? "text-red-500 font-bold" : "text-emerald-500 font-bold"}>
+                    {Number(project?.budget_allocated) > 0 
+                      ? Math.round((Number(project?.budget_spent) / Number(project?.budget_allocated)) * 100) 
+                      : 0}%
+                  </span>
+                </div>
+                <div className="w-full h-3 bg-slate-200 dark:bg-slate-850 rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full rounded-full ${Number(project?.budget_spent) > Number(project?.budget_allocated) ? 'bg-red-500' : 'bg-emerald-500'}`}
+                    style={{ 
+                      width: `${Math.min(100, Math.round(((Number(project?.budget_spent) || 0) / (Number(project?.budget_allocated) || 1)) * 100))}%` 
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-150 dark:border-slate-800 flex items-center justify-between text-xs">
+                <span className="font-semibold text-slate-500">Remaining/Surplus:</span>
+                <span className={`font-extrabold ${Number(project?.budget_allocated) >= Number(project?.budget_spent) ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                  ${Math.abs((Number(project?.budget_allocated) || 0) - (Number(project?.budget_spent) || 0)).toLocaleString()}
+                  {Number(project?.budget_allocated) >= Number(project?.budget_spent) ? ' (Surplus)' : ' (Deficit)'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* COLUMN 2: PROJECT IMPACT METRICS */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm space-y-4">
+            <h3 className="text-base font-extrabold text-slate-800 dark:text-white flex items-center gap-2">
+              <Target className="w-5 h-5 text-emerald-600" />
+              Project Impact Metrics
+            </h3>
+            <div className="space-y-4 max-h-[175px] overflow-y-auto pr-1">
+              {impactMetrics.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {impactMetrics.map((m) => {
+                    const pct = Math.min(Math.round((m.current_value / (m.target_value || 1)) * 100), 100);
+                    return (
+                      <div key={m.id} className="p-3 border border-slate-200 dark:border-slate-800 rounded-lg flex flex-col gap-1">
+                        <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase">
+                          <span className="truncate pr-1">Metric {m.metric_template_id.substring(0, 8)}</span>
+                          <span className="text-emerald-500">{pct}%</span>
+                        </div>
+                        <span className="text-base font-extrabold text-slate-800 dark:text-white mt-1">
+                          {m.current_value} <span className="text-xs font-normal text-slate-500">/ {m.target_value}</span>
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs text-slate-500 italic text-center py-8">
+                  No impact metrics configured for this initiative.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {projectId && project?.status !== 'COMPLETED' && (
         <BudgetStatusBar projectId={projectId} />
       )}
 
@@ -248,6 +375,7 @@ export default function ProjectDashboard() {
           createPhaseMutation.reset();
           setIsCreatePhaseModalOpen(true);
         }}
+        readOnly={project?.status === 'COMPLETED'}
       />
 
       {/* STATUS TRANSITION POPOVER */}

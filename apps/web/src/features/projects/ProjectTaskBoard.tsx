@@ -90,10 +90,12 @@ function TaskCard({
   task,
   onStatusClick,
   isLoading,
+  readOnly,
 }: {
   task: TaskResponse;
   onStatusClick: (position: { top: number; left: number }) => void;
   isLoading: boolean;
+  readOnly?: boolean;
 }) {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const config = STATUS_CONFIG[task.status];
@@ -105,23 +107,33 @@ function TaskCard({
         ref={buttonRef}
         type="button"
         onClick={() => {
-          if (buttonRef.current) {
+          if (!readOnly && buttonRef.current) {
             const rect = buttonRef.current.getBoundingClientRect();
             onStatusClick({ top: rect.bottom + 8, left: rect.left });
           }
         }}
-        disabled={isLoading}
+        disabled={isLoading || readOnly}
         className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium ${config.bg} ${config.text} disabled:opacity-50`}
       >
         {config.icon}
         {config.label}
-        <ChevronDown className="w-3 h-3 opacity-60" />
+        {!readOnly && <ChevronDown className="w-3 h-3 opacity-60" />}
       </button>
       <p className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700 text-xs text-slate-500">
         ID: <span className="font-mono">{task.id.substring(0, 8)}</span>
       </p>
     </div>
   );
+}
+
+interface ProjectTaskBoardProps {
+  phases: PhaseResponse[];
+  tasks: TaskResponse[];
+  isLoading: boolean;
+  onStatusClick: (taskId: string, position: { top: number; left: number }) => void;
+  isUpdating: boolean;
+  onCreatePhase: () => void;
+  readOnly?: boolean;
 }
 
 export default function ProjectTaskBoard({
@@ -131,6 +143,7 @@ export default function ProjectTaskBoard({
   onStatusClick,
   isUpdating,
   onCreatePhase,
+  readOnly,
 }: ProjectTaskBoardProps) {
   const { uncategorized, byPhase } = groupTasksByPhase(phases, tasks);
 
@@ -167,14 +180,16 @@ export default function ProjectTaskBoard({
             <span className="px-3 py-1 rounded-full text-sm font-bold bg-amber-200/80 dark:bg-amber-900 text-amber-900 dark:text-amber-100">
               {uncategorized.length}
             </span>
-            <button
-              type="button"
-              onClick={onCreatePhase}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold shadow-sm transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Create Phase
-            </button>
+            {!readOnly && (
+              <button
+                type="button"
+                onClick={onCreatePhase}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold shadow-sm transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Create Phase
+              </button>
+            )}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {uncategorized.map((task) => (
@@ -183,6 +198,7 @@ export default function ProjectTaskBoard({
                 task={task}
                 onStatusClick={(pos) => onStatusClick(task.id, pos)}
                 isLoading={isUpdating}
+                readOnly={readOnly}
               />
             ))}
           </div>
@@ -208,6 +224,7 @@ export default function ProjectTaskBoard({
                   task={task}
                   onStatusClick={(pos) => onStatusClick(task.id, pos)}
                   isLoading={isUpdating}
+                  readOnly={readOnly}
                 />
               ))
             ) : (

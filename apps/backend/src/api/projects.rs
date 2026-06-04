@@ -1,6 +1,5 @@
-use axum::{extract::State, http::StatusCode, Json};
+use axum::{extract::{State, Path, Query}, http::StatusCode, Json};
 use sqlx::{PgPool, Postgres, Transaction};
-use axum::extract::Path;
 use rust_decimal::prelude::ToPrimitive;
 use uuid::Uuid;
 use crate::models::UpdateBudgetRequest;
@@ -10,6 +9,11 @@ use crate::models::{
     FieldLogResponse, CreateFieldLogRequest, UpdateFieldLogRequest,
     ProjectMessageResponse, CreateProjectMessageRequest, ProjectImpactMetricResponse, UpdateImpactMetricRequest
 };
+
+#[derive(serde::Deserialize)]
+pub struct ProjectsQuery {
+    pub status: Option<String>,
+}
 
 pub async fn refresh_project_status(
     tx: &mut Transaction<'_, Postgres>,
@@ -40,10 +44,11 @@ pub async fn refresh_project_status(
 pub async fn get_projects(
     State(pool): State<PgPool>,
     claims: UserClaims, // 🛡️ AUTH GUARD: Extracts the user's country_id automatically
+    Query(query): Query<ProjectsQuery>,
 ) -> Result<Json<Vec<ProjectResponse>>, (StatusCode, String)> {
     
     // 🌍 MULTI-TENANCY IN ACTION: `WHERE country_id = $1` prevents data leaks
-    let projects = sqlx::query_as!(
+    let mut projects = sqlx::query_as!(
         ProjectResponse,
         r#"
         SELECT
@@ -74,8 +79,8 @@ pub async fn get_projects(
                 COUNT(*) as task_count,
                 COUNT(*) FILTER (WHERE status = 'COMPLETED') as completed_count,
                 COUNT(*) FILTER (WHERE status IN ('IN_PROGRESS', 'COMPLETED')) as active_count,
-                COALESCE(SUM(GREATEST(end_date - start_date, 0)), 0) as total_days,
-                COALESCE(SUM(CASE WHEN status = 'COMPLETED' THEN GREATEST(end_date - start_date, 0) ELSE 0 END), 0) as completed_days
+                COALESCE(SUM(COALESCE(GREATEST(end_date - start_date + 1, 1), 1)), 0) as total_days,
+                COALESCE(SUM(CASE WHEN status = 'COMPLETED' THEN COALESCE(GREATEST(end_date - start_date + 1, 1), 1) ELSE 0 END), 0) as completed_days
             FROM tasks
             WHERE project_id = p.id
         ) task_rollup ON TRUE
@@ -87,6 +92,18 @@ pub async fn get_projects(
     .fetch_all(&pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    if let Some(ref status_filter) = query.status {
+        projects.retain(|p| {
+            let status_str = match p.status {
+                ProjectStatus::PLANNING => "PLANNING",
+                ProjectStatus::IN_PROGRESS => "IN_PROGRESS",
+                ProjectStatus::COMPLETED => "COMPLETED",
+                ProjectStatus::ON_HOLD => "ON_HOLD",
+            };
+            status_str.eq_ignore_ascii_case(status_filter)
+        });
+    }
 
     Ok(Json(projects))
 }
@@ -130,8 +147,8 @@ pub async fn get_project(
                 COUNT(*) as task_count,
                 COUNT(*) FILTER (WHERE status = 'COMPLETED') as completed_count,
                 COUNT(*) FILTER (WHERE status IN ('IN_PROGRESS', 'COMPLETED')) as active_count,
-                COALESCE(SUM(GREATEST(end_date - start_date, 0)), 0) as total_days,
-                COALESCE(SUM(CASE WHEN status = 'COMPLETED' THEN GREATEST(end_date - start_date, 0) ELSE 0 END), 0) as completed_days
+                COALESCE(SUM(COALESCE(GREATEST(end_date - start_date + 1, 1), 1)), 0) as total_days,
+                COALESCE(SUM(CASE WHEN status = 'COMPLETED' THEN COALESCE(GREATEST(end_date - start_date + 1, 1), 1) ELSE 0 END), 0) as completed_days
             FROM tasks
             WHERE project_id = p.id
         ) task_rollup ON TRUE
@@ -285,8 +302,8 @@ pub async fn update_project_budget(
                 COUNT(*) as task_count,
                 COUNT(*) FILTER (WHERE status = 'COMPLETED') as completed_count,
                 COUNT(*) FILTER (WHERE status IN ('IN_PROGRESS', 'COMPLETED')) as active_count,
-                COALESCE(SUM(GREATEST(end_date - start_date, 0)), 0) as total_days,
-                COALESCE(SUM(CASE WHEN status = 'COMPLETED' THEN GREATEST(end_date - start_date, 0) ELSE 0 END), 0) as completed_days
+                COALESCE(SUM(COALESCE(GREATEST(end_date - start_date + 1, 1), 1)), 0) as total_days,
+                COALESCE(SUM(CASE WHEN status = 'COMPLETED' THEN COALESCE(GREATEST(end_date - start_date + 1, 1), 1) ELSE 0 END), 0) as completed_days
             FROM tasks
             WHERE project_id = p.id
         ) task_rollup ON TRUE

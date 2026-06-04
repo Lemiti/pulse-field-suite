@@ -367,3 +367,33 @@ pub struct WebhookDeliveryQueueItem {
     pub next_attempt_at: Option<DateTime<Utc>>,
     pub status: String,
 }
+
+#[derive(Serialize, Deserialize, TS, Debug, Clone)]
+#[ts(export, export_to = "../../../packages/shared-types/src/BvaProjectSummary.ts")]
+pub struct BvaProjectSummary {
+    pub project_id: Uuid,
+    pub project_name: String,
+    pub budget_allocated: f64,
+    pub budget_spent: f64,
+    pub variance: f64,
+    pub utilization_percentage: f64,
+}
+
+#[derive(Serialize, Deserialize, TS, Debug, Clone)]
+#[ts(export, export_to = "../../../packages/shared-types/src/ImpactMetricSummary.ts")]
+pub struct ImpactMetricSummary {
+    pub project_name: String,
+    pub metric_code: String,
+    pub metric_name: String,
+    pub target_value: i32,
+    pub current_value: i32,
+    pub unit: String,
+    pub progress_percentage: f64,
+}
+
+#[derive(Serialize, Deserialize, TS, Debug, Clone)]
+#[ts(export, export_to = "../../../packages/shared-types/src/ReportSummaryResponse.ts")]
+pub struct ReportSummaryResponse {
+    pub bva_summary: Vec<BvaProjectSummary>,
+    pub impact_summary: Vec<ImpactMetricSummary>,
+}

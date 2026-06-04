@@ -85,7 +85,17 @@ export default function ImpactTab({ projectId }: ImpactTabProps) {
   const { activeCountryId } = useActiveCountry();
   const queryClient = useQueryClient();
   const claims = getUserClaims();
-  const canEdit = canEditImpactMetrics(claims?.role);
+
+  const { data: project } = useQuery<any>({
+    queryKey: ['project', projectId, activeCountryId],
+    queryFn: async () => {
+      const res = await api.get(`/projects/${projectId}`);
+      return res.data;
+    },
+    enabled: !!projectId,
+  });
+
+  const canEdit = canEditImpactMetrics(claims?.role) && project?.status !== 'COMPLETED';
   const [editingMetric, setEditingMetric] = useState<ProjectImpactMetricResponse | null>(null);
   const [newValue, setNewValue] = useState('');
 

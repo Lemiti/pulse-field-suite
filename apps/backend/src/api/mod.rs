@@ -7,4 +7,5 @@ pub mod ai;
 pub mod sync;
 pub mod media;
 pub mod alerts;
+pub mod reports;
 

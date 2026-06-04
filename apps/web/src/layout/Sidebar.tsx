@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Home, Mail, FolderKanban, History, Settings, HelpCircle, LogOut } from 'lucide-react';
+import { Home, Mail, FolderKanban, History, BarChart3, Settings, HelpCircle, LogOut } from 'lucide-react';
 
 export default function Sidebar() {
   const navItems = [
@@ -7,6 +7,7 @@ export default function Sidebar() {
     { name: 'Inbox', path: '/inbox', icon: Mail },
     { name: 'Projects', path: '/projects', icon: FolderKanban },
     { name: 'Audit Logs', path: '/audit-logs', icon: History },
+    { name: 'Reports', path: '/reports', icon: BarChart3 },
     { name: 'Settings', path: '/settings', icon: Settings },
   ];
 

@@ -34,3 +34,6 @@ export * from './UpdateImpactMetricRequest';
 export * from './WebhookDeliveryQueueItem';
 export * from './PhaseResponse';
 export * from './CreatePhaseRequest';
+export * from './BvaProjectSummary';
+export * from './ImpactMetricSummary';
+export * from './ReportSummaryResponse';
