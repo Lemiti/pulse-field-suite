@@ -3,7 +3,7 @@ mod api;
 mod models;
 
 use axum::{
-    routing::{get, post, patch},
+    routing::{get, post, patch, delete},
     Router,
 };
 use sqlx::postgres::PgPoolOptions;
@@ -68,6 +68,8 @@ async fn main() {
         models::BvaProjectSummary::export().unwrap();
         models::ImpactMetricSummary::export().unwrap();
         models::ReportSummaryResponse::export().unwrap();
+        models::ProjectMediaResponse::export().unwrap();
+        models::CreateProjectMediaRequest::export().unwrap();
         api::auth::SignupRequest::export().unwrap();
         api::auth::LoginRequest::export().unwrap();
         api::auth::ChangePasswordRequest::export().unwrap();
@@ -115,6 +117,8 @@ export * from './CreatePhaseRequest';
 export * from './BvaProjectSummary';
 export * from './ImpactMetricSummary';
 export * from './ReportSummaryResponse';
+export * from './ProjectMediaResponse';
+export * from './CreateProjectMediaRequest';
 export * from './SignupRequest';
 export * from './LoginRequest';
 export * from './ChangePasswordRequest';
@@ -159,6 +163,8 @@ export * from './LoginResponse';
 	    .route("/api/sync", post(api::sync::push_sync))
         .route("/api/media/upload-url", post(api::media::get_upload_url))
         .route("/api/media/confirm", post(api::media::confirm_upload))
+        .route("/api/projects/:project_id/media", get(api::media::get_project_media).post(api::media::create_project_media))
+        .route("/api/projects/:project_id/media/:media_id", delete(api::media::delete_project_media))
 	    .route("/api/projects/:project_id/budget", patch(api::projects::update_project_budget))
         .route("/api/projects/:project_id/alerts", get(api::alerts::get_alerts))
         .route("/api/alerts", get(api::alerts::get_global_alerts))

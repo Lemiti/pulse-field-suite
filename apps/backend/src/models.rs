@@ -398,3 +398,24 @@ pub struct ReportSummaryResponse {
     pub bva_summary: Vec<BvaProjectSummary>,
     pub impact_summary: Vec<ImpactMetricSummary>,
 }
+
+#[derive(Serialize, Deserialize, TS, Debug, Clone)]
+#[ts(export, export_to = "../../../packages/shared-types/src/ProjectMediaResponse.ts")]
+pub struct ProjectMediaResponse {
+    pub id: Uuid,
+    pub task_id: Uuid,
+    pub task_name: String,
+    pub gdrive_file_id: Option<String>,
+    pub gdrive_web_url: Option<String>,
+    pub uploaded_by: Uuid,
+    pub uploaded_by_name: String,
+    #[ts(type = "string")]
+    pub created_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Serialize, Deserialize, TS, Debug, Clone)]
+#[ts(export, export_to = "../../../packages/shared-types/src/CreateProjectMediaRequest.ts")]
+pub struct CreateProjectMediaRequest {
+    pub task_id: Uuid,
+    pub gdrive_web_url: String,
+}
