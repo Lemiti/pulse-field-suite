@@ -9,8 +9,10 @@ import ProjectDashboard from './features/projects/ProjectDashboard';
 import PlaceholderPage from './features/placeholder/PlaceholderPage';
 import AuditLogs from './features/audit_logs/AuditLogs';
 import Reports from './features/reports/Reports';
+import Settings from './features/settings/Settings';
 import Inbox from './features/inbox/Inbox';
 import { ActiveCountryProvider } from "./features/auth/ActiveCountryContext";
+import { AuthProvider } from "./features/auth/AuthContext";
 import SyncManager from "./features/sync/SyncManager";
 
 const queryClient = new QueryClient({
@@ -26,28 +28,30 @@ const queryClient = new QueryClient({
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ActiveCountryProvider>
-        <SyncManager />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-              <Route element={<ProtectedRoute />}>
-                <Route path="/" element={<MainLayout />}>
-                <Route index element={<Home />} />
-                <Route path="projects" element={<ProjectsList />} />
-                <Route path="projects/:projectId" element={<ProjectDashboard />} />
-                <Route path="projects/:projectId/:tab" element={<ProjectDashboard />} />
-                <Route path="inbox" element={<Inbox />} />
-                <Route path="inbox/:tab" element={<Inbox />} />
-                <Route path="audit-logs" element={<AuditLogs />} />
-                <Route path="reports" element={<Reports />} />
-                <Route path="settings" element={<PlaceholderPage title="Settings" />} />
-                <Route path="help" element={<PlaceholderPage title="Help" />} />
+      <AuthProvider>
+        <ActiveCountryProvider>
+          <SyncManager />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+                <Route element={<ProtectedRoute />}>
+                  <Route path="/" element={<MainLayout />}>
+                  <Route index element={<Home />} />
+                  <Route path="projects" element={<ProjectsList />} />
+                  <Route path="projects/:projectId" element={<ProjectDashboard />} />
+                  <Route path="projects/:projectId/:tab" element={<ProjectDashboard />} />
+                  <Route path="inbox" element={<Inbox />} />
+                  <Route path="inbox/:tab" element={<Inbox />} />
+                  <Route path="audit-logs" element={<AuditLogs />} />
+                  <Route path="reports" element={<Reports />} />
+                  <Route path="settings" element={<Settings />} />
+                  <Route path="help" element={<PlaceholderPage title="Help" />} />
+                </Route>
               </Route>
-            </Route>
-          </Routes>
-        </BrowserRouter>
-      </ActiveCountryProvider>
+            </Routes>
+          </BrowserRouter>
+        </ActiveCountryProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

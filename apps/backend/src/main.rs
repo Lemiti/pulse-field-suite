@@ -68,6 +68,10 @@ async fn main() {
         models::BvaProjectSummary::export().unwrap();
         models::ImpactMetricSummary::export().unwrap();
         models::ReportSummaryResponse::export().unwrap();
+        api::auth::SignupRequest::export().unwrap();
+        api::auth::LoginRequest::export().unwrap();
+        api::auth::ChangePasswordRequest::export().unwrap();
+        api::auth::LoginResponse::export().unwrap();
 
 
 
@@ -111,6 +115,10 @@ export * from './CreatePhaseRequest';
 export * from './BvaProjectSummary';
 export * from './ImpactMetricSummary';
 export * from './ReportSummaryResponse';
+export * from './SignupRequest';
+export * from './LoginRequest';
+export * from './ChangePasswordRequest';
+export * from './LoginResponse';
 
 "#;
         std::fs::write("../../packages/shared-types/src/index.ts", index_content.trim())
@@ -133,6 +141,9 @@ export * from './ReportSummaryResponse';
     let app = Router::new()
         .route("/api/health", get(|| async { "Pulse-Field API is online!" }))
         .route("/api/auth/mock-login", get(api::auth::mock_login))
+        .route("/api/auth/signup", post(api::auth::signup))
+        .route("/api/auth/login", post(api::auth::login))
+        .route("/api/auth/change-password", post(api::auth::change_password))
         // 🚀 NEW SECURE ROUTES:
         .route("/api/projects", get(api::projects::get_projects))
         .route("/api/projects", post(api::projects::create_project))

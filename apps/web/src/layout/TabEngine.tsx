@@ -17,6 +17,7 @@ export default function TabEngine() {
   const projectDirectoryTabs = ['Active', 'Archived', 'Templates'];
   const inboxTabs = ['Unread', 'Messages'];
   const globalTabs = ['Feed', 'Notifications'];
+  const settingsTabs = ['Profile', 'Security', 'Workspace'];
 
   let activeTabs: string[] = [...globalTabs];
 
@@ -28,6 +29,8 @@ export default function TabEngine() {
     activeTabs = projectDirectoryTabs;
   } else if (path.startsWith('/inbox')) {
     activeTabs = inboxTabs;
+  } else if (path === '/settings') {
+    activeTabs = settingsTabs;
   }
 
   const searchParams = new URLSearchParams(location.search);

@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Lock, User, Building2, ToggleRight, Database, Cloud } from 'lucide-react';
+import { api } from '../../lib/api';
 
 /**
  * JWT Payload structure (decoded from token)
@@ -297,6 +298,54 @@ function SecurityTab() {
     apiKeys: false,
   });
 
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!oldPassword.trim() || !newPassword.trim() || !confirmPassword.trim()) {
+      setMessage({ type: 'error', text: 'All password fields are required.' });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setMessage({ type: 'error', text: 'New passwords do not match.' });
+      return;
+    }
+    if (newPassword.length < 6) {
+      setMessage({ type: 'error', text: 'New password must be at least 6 characters long.' });
+      return;
+    }
+
+    setLoading(true);
+    setMessage(null);
+
+    try {
+      await api.post('/auth/change-password', {
+        old_password: oldPassword,
+        new_password: newPassword,
+      });
+      setMessage({ type: 'success', text: 'Password updated successfully.' });
+      setOldPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err: any) {
+      console.error(err);
+      if (err.response && err.response.data) {
+        setMessage({
+          type: 'error',
+          text: typeof err.response.data === 'string' ? err.response.data : 'Failed to update password.',
+        });
+      } else {
+        setMessage({ type: 'error', text: 'Network connection issue.' });
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const securityOptions = [
     {
       id: 'twoFactor',
@@ -319,7 +368,7 @@ function SecurityTab() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-6 border border-blue-200 dark:border-blue-800">
         <p className="text-blue-900 dark:text-blue-200 text-sm">
           Security settings help protect your account and organization data. Changes to these settings
@@ -377,6 +426,84 @@ function SecurityTab() {
             </button>
           </div>
         ))}
+      </div>
+
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm space-y-6">
+        <div>
+          <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Change Account Password</h3>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
+            Update your account credentials. You will stay signed in.
+          </p>
+        </div>
+
+        {message && (
+          <div className={`p-4 rounded-lg text-xs font-bold ${
+            message.type === 'success'
+              ? 'bg-emerald-500/10 border border-emerald-500 text-emerald-600 dark:text-emerald-400'
+              : 'bg-red-500/10 border border-red-500 text-red-500'
+          }`}>
+            {message.text}
+          </div>
+        )}
+
+        <form onSubmit={handlePasswordChange} className="space-y-4 max-w-md">
+          <div className="space-y-2">
+            <label className="block text-[11px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+              Current Password
+            </label>
+            <input
+              type="password"
+              placeholder="••••••••"
+              value={oldPassword}
+              onChange={(e) => setOldPassword(e.target.value)}
+              disabled={loading}
+              className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-[11px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+              New Password
+            </label>
+            <input
+              type="password"
+              placeholder="••••••••"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              disabled={loading}
+              className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-[11px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+              Confirm New Password
+            </label>
+            <input
+              type="password"
+              placeholder="••••••••"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              disabled={loading}
+              className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              required
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="flex items-center justify-center gap-2 h-10 px-5 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:bg-blue-500/50 text-white font-extrabold text-xs transition-colors cursor-pointer shadow-sm"
+          >
+            {loading ? (
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              'Update Password'
+            )}
+          </button>
+        </form>
       </div>
     </div>
   );

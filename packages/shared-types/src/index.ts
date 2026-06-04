@@ -37,3 +37,7 @@ export * from './CreatePhaseRequest';
 export * from './BvaProjectSummary';
 export * from './ImpactMetricSummary';
 export * from './ReportSummaryResponse';
+export * from './SignupRequest';
+export * from './LoginRequest';
+export * from './ChangePasswordRequest';
+export * from './LoginResponse';
