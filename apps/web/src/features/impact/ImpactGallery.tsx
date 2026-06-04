@@ -27,6 +27,11 @@ const formatDate = (dateStr: string | null | undefined): string => {
   }
 };
 
+const getTaskDate = (task: TaskResponse): string | null | undefined => {
+  const taskAny = task as any;
+  return taskAny.updatedAt || taskAny.updated_at || taskAny.created_at;
+};
+
 /**
  * ImpactGallery Component
  *
@@ -92,7 +97,7 @@ export default function ImpactGallery({ tasks }: ImpactGalleryProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {tasksWithPhotos.map((task) => {
           const photoUrl = getGDriveUrl(task);
-          const displayDate = formatDate(task.updatedAt || task.created_at);
+          const displayDate = formatDate(getTaskDate(task));
           const officerName = (task as any).assigned_to_name || (task as any).assigned_to || 'Unknown Officer';
 
           return (
@@ -163,7 +168,7 @@ interface LightboxModalProps {
  */
 function LightboxModal({ task, onClose }: LightboxModalProps) {
   const photoUrl = getGDriveUrl(task);
-  const displayDate = formatDate(task.updatedAt || task.created_at);
+  const displayDate = formatDate(getTaskDate(task));
 
   if (!photoUrl) return null;
 

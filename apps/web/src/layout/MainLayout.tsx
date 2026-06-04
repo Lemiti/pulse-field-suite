@@ -5,24 +5,16 @@ import TabEngine from './TabEngine';
 
 export default function MainLayout() {
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-50 dark:bg-[#0F172A] font-sans text-slate-900 dark:text-slate-100">
-      {/* LEFT: Sidebar Navigation */}
+    <div className="flex h-screen w-screen overflow-hidden bg-[#F5FBFF] font-sans text-slate-950 antialiased dark:bg-[#0F172A] dark:text-slate-100">
       <Sidebar />
 
-      {/* RIGHT: Main Content Area */}
-      <div className="flex flex-col flex-1 min-w-0">
-        
-        {/* Top Branding & Controls */}
+      <div className="flex min-w-0 flex-1 flex-col">
         <TopNav />
-        
-        {/* Dynamic Context Tabs */}
         <TabEngine />
-        
-        {/* Scrollable Page Content */}
-        <main className="flex-1 overflow-y-auto p-8 relative">
+
+        <main className="relative flex-1 overflow-y-auto px-6 py-7 md:px-8">
           <Outlet />
         </main>
-        
       </div>
     </div>
   );
