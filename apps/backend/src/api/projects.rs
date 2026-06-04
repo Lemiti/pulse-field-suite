@@ -72,7 +72,8 @@ pub async fn get_projects(
                 WHEN task_rollup.total_days > 0
                     THEN (task_rollup.completed_days::float8 / task_rollup.total_days::float8) * 100.0
                 ELSE 0.0
-            END as "progress_percentage!"
+            END as "progress_percentage!",
+            p.is_template
         FROM projects p
         LEFT JOIN LATERAL (
             SELECT
@@ -140,7 +141,8 @@ pub async fn get_project(
                 WHEN task_rollup.total_days > 0
                     THEN (task_rollup.completed_days::float8 / task_rollup.total_days::float8) * 100.0
                 ELSE 0.0
-            END as "progress_percentage!"
+            END as "progress_percentage!",
+            p.is_template
         FROM projects p
         LEFT JOIN LATERAL (
             SELECT
@@ -189,7 +191,8 @@ pub async fn create_project(
             funding_sources,
             focus_area as "focus_area: ProjectFocusArea",
             location_metadata,
-            0.0::float8 as "progress_percentage!"
+            0.0::float8 as "progress_percentage!",
+            is_template
         "#,
         claims.country_id, // Automatically bind the project to the user's country!
         payload.name,
@@ -295,7 +298,8 @@ pub async fn update_project_budget(
                 WHEN task_rollup.total_days > 0
                     THEN (task_rollup.completed_days::float8 / task_rollup.total_days::float8) * 100.0
                 ELSE 0.0
-            END as "progress_percentage!"
+            END as "progress_percentage!",
+            p.is_template
         FROM updated_project p
         LEFT JOIN LATERAL (
             SELECT
@@ -831,4 +835,127 @@ pub async fn update_project_impact_metric(
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     Ok(Json(updated_metric))
+}
+
+// POST /api/projects/:project_id/use-template
+pub async fn use_template(
+    State(pool): State<PgPool>,
+    claims: UserClaims,
+    Path(template_id): Path<Uuid>,
+) -> Result<Json<Uuid>, (StatusCode, String)> {
+    // 1. Fetch the template project
+    let template = sqlx::query!(
+        r#"
+        SELECT name, description, budget_allocated, funding_sources, focus_area as "focus_area: ProjectFocusArea", location_metadata, start_date, end_date
+        FROM projects
+        WHERE id = $1 AND is_template = TRUE
+        "#,
+        template_id
+    )
+    .fetch_optional(&pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+    .ok_or((StatusCode::NOT_FOUND, "Template project not found".to_string()))?;
+
+    // 2. Begin transaction
+    let mut tx = pool.begin().await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    // 3. Create duplicate project (not a template, reset spent, status planning)
+    let new_project_id = sqlx::query_scalar!(
+        r#"
+        INSERT INTO projects (
+            country_id, name, description, budget_allocated, budget_spent, status, 
+            funding_sources, start_date, end_date, focus_area, location_metadata, is_template
+        )
+        VALUES ($1, $2, $3, $4, $5, 'PLANNING'::project_status, $6, $7, $8, $9, $10, FALSE)
+        RETURNING id
+        "#,
+        claims.country_id,
+        template.name,
+        template.description,
+        template.budget_allocated,
+        rust_decimal::Decimal::from(0),
+        template.funding_sources,
+        template.start_date,
+        template.end_date,
+        template.focus_area as ProjectFocusArea,
+        template.location_metadata
+    )
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    // 4. Duplicate phases and keep old -> new mapping
+    let old_phases = sqlx::query!(
+        r#"
+        SELECT id, name, sort_order
+        FROM phases
+        WHERE project_id = $1
+        ORDER BY sort_order ASC
+        "#,
+        template_id
+    )
+    .fetch_all(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let mut phase_mapping = std::collections::HashMap::new();
+
+    for phase in old_phases {
+        let new_phase_id = sqlx::query_scalar!(
+            r#"
+            INSERT INTO phases (project_id, name, sort_order)
+            VALUES ($1, $2, $3)
+            RETURNING id
+            "#,
+            new_project_id,
+            phase.name,
+            phase.sort_order
+        )
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+        phase_mapping.insert(phase.id, new_phase_id);
+    }
+
+    // 5. Duplicate tasks
+    let old_tasks = sqlx::query!(
+        r#"
+        SELECT id, phase_id, name, dependencies, start_date, end_date
+        FROM tasks
+        WHERE project_id = $1
+        "#,
+        template_id
+    )
+    .fetch_all(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    for task in old_tasks {
+        let new_phase_id = task.phase_id.and_then(|id| phase_mapping.get(&id).copied());
+        
+        sqlx::query!(
+            r#"
+            INSERT INTO tasks (
+                project_id, phase_id, assigned_to, name, status, dependencies, start_date, end_date
+            )
+            VALUES ($1, $2, NULL, $3, 'PLAN'::task_status, $4, $5, $6)
+            "#,
+            new_project_id,
+            new_phase_id,
+            task.name,
+            task.dependencies,
+            task.start_date,
+            task.end_date
+        )
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    }
+
+    // Commit transaction
+    tx.commit().await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(Json(new_project_id))
 }

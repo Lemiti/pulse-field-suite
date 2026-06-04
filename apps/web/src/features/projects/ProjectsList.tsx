@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../../lib/api';
 import BudgetStatusBar from './BudgetStatusBar';
@@ -55,6 +55,7 @@ function ProjectProgressBar({ percentage }: { percentage: number }) {
 
 export default function ProjectsList() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const currentTab = searchParams.get('tab') || 'Active';
   const { activeCountryId } = useActiveCountry();
@@ -94,10 +95,14 @@ export default function ProjectsList() {
   }
 
   const displayProjects = projects.filter((p) => {
+    if (currentTab === 'Templates') {
+      return p.is_template === true;
+    }
+    if (p.is_template) {
+      return false;
+    }
     if (currentTab === 'Archived') {
       return p.status === 'COMPLETED';
-    } else if (currentTab === 'Templates') {
-      return false; // Placeholder for templates tab
     } else {
       return p.status !== 'COMPLETED';
     }
@@ -208,61 +213,115 @@ export default function ProjectsList() {
 
         <div className="space-y-8">
           {filteredProjects.length > 0 ? (
-            <>
-              {projectsByStatus.map(({ status, items }) => (
-                <div key={status} className="space-y-4">
-                  <h3 className="text-sm font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-blue-500" />
-                    {status.replace(/_/g, ' ')}
-                    <span className="text-slate-400 font-bold">({items.length})</span>
-                  </h3>
-                  {items.map((p) => {
-                    const allocatedBudget = Number(p.budget_allocated) || 0;
-                    const spentBudget = Number(p.budget_spent) || 0;
-                    return (
+            currentTab === 'Templates' ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredProjects.map((p) => {
+                  const allocatedBudget = Number(p.budget_allocated) || 0;
+                  return (
+                    <div
+                      key={p.id}
+                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm hover:shadow-lg transition-all flex flex-col justify-between space-y-6"
+                    >
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="px-2.5 py-1 text-xs font-extrabold uppercase bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-md border border-blue-500/10">
+                            {p.focus_area}
+                          </span>
+                          <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                            Est. Budget: ${allocatedBudget.toLocaleString()}
+                          </span>
+                        </div>
+                        <h3 className="text-lg font-extrabold text-slate-800 dark:text-white">
+                          {p.name}
+                        </h3>
+                        <p className="text-slate-500 dark:text-slate-400 text-sm line-clamp-3 leading-relaxed">
+                          {p.description || 'No description provided.'}
+                        </p>
+                      </div>
+                      
+                      <div className="pt-4 border-t border-slate-100 dark:border-slate-800/60 flex justify-end">
+                        <button
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            if (confirm(`Do you want to initialize a new active project workspace using the "${p.name}" template?`)) {
+                              try {
+                                const res = await api.post(`/projects/${p.id}/use-template`);
+                                const newProjectId = res.data;
+                                queryClient.invalidateQueries({ queryKey: ['projects'] });
+                                navigate(`/projects/${newProjectId}?tab=Dashboard`);
+                              } catch (err) {
+                                console.error(err);
+                                alert('Failed to copy project from template.');
+                              }
+                            }
+                          }}
+                          className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-lg transition-all shadow-sm cursor-pointer"
+                        >
+                          <Sparkles className="w-4 h-4" />
+                          <span>Use Template</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <>
+                {projectsByStatus.map(({ status, items }) => (
+                  <div key={status} className="space-y-4">
+                    <h3 className="text-sm font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-blue-500" />
+                      {status.replace(/_/g, ' ')}
+                      <span className="text-slate-400 font-bold">({items.length})</span>
+                    </h3>
+                    {items.map((p) => {
+                      const allocatedBudget = Number(p.budget_allocated) || 0;
+                      const spentBudget = Number(p.budget_spent) || 0;
+                      return (
+                        <div
+                          key={p.id}
+                          onClick={() => navigate(`/projects/${p.id}?tab=Dashboard`)}
+                          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-blue-500/20 rounded-xl p-6 shadow-sm hover:shadow-lg transition-all cursor-pointer group space-y-4"
+                        >
+                          <div className="flex items-start gap-4">
+                            <div className="p-3 bg-blue-50 dark:bg-blue-950 rounded-lg shrink-0">
+                              <Folder className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="text-lg font-extrabold text-slate-800 dark:text-white group-hover:text-blue-600 truncate">
+                                {p.name}
+                              </h3>
+                              <p className="text-slate-500 dark:text-slate-400 text-sm line-clamp-2">
+                                {p.description || 'No description provided.'}
+                              </p>
+                            </div>
+                            <ArrowUpRight className="w-5 h-5 text-slate-400 group-hover:text-blue-600 shrink-0" />
+                          </div>
+                          <ProjectProgressBar percentage={Number(p.progress_percentage) || 0} />
+                          <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
+                            <BudgetStatusBar allocated={allocatedBudget} spent={spentBudget} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+                {otherProjects.length > 0 && (
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-extrabold text-slate-500 uppercase tracking-wider">Other</h3>
+                    {otherProjects.map((p) => (
                       <div
                         key={p.id}
                         onClick={() => navigate(`/projects/${p.id}?tab=Dashboard`)}
-                        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-blue-500/20 rounded-xl p-6 shadow-sm hover:shadow-lg transition-all cursor-pointer group space-y-4"
+                        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 cursor-pointer"
                       >
-                        <div className="flex items-start gap-4">
-                          <div className="p-3 bg-blue-50 dark:bg-blue-950 rounded-lg shrink-0">
-                            <Folder className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h3 className="text-lg font-extrabold text-slate-800 dark:text-white group-hover:text-blue-600 truncate">
-                              {p.name}
-                            </h3>
-                            <p className="text-slate-500 dark:text-slate-400 text-sm line-clamp-2">
-                              {p.description || 'No description provided.'}
-                            </p>
-                          </div>
-                          <ArrowUpRight className="w-5 h-5 text-slate-400 group-hover:text-blue-600 shrink-0" />
-                        </div>
-                        <ProjectProgressBar percentage={Number(p.progress_percentage) || 0} />
-                        <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
-                          <BudgetStatusBar allocated={allocatedBudget} spent={spentBudget} />
-                        </div>
+                        {p.name}
                       </div>
-                    );
-                  })}
-                </div>
-              ))}
-              {otherProjects.length > 0 && (
-                <div className="space-y-4">
-                  <h3 className="text-sm font-extrabold text-slate-500 uppercase tracking-wider">Other</h3>
-                  {otherProjects.map((p) => (
-                    <div
-                      key={p.id}
-                      onClick={() => navigate(`/projects/${p.id}?tab=Dashboard`)}
-                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 cursor-pointer"
-                    >
-                      {p.name}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </>
+                    ))}
+                  </div>
+                )}
+              </>
+            )
           ) : (
             <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-12 text-center space-y-4">
               <Folder className="w-8 h-8 text-slate-400 mx-auto" />

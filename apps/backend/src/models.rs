@@ -92,6 +92,7 @@ pub struct ProjectResponse {
     #[ts(type = "any")]
     pub location_metadata: serde_json::Value, // Added
     pub progress_percentage: f64,
+    pub is_template: bool,
 }
 
 #[derive(Serialize, Deserialize, TS, Debug)]
