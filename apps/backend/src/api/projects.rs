@@ -662,6 +662,43 @@ pub async fn update_project_note(
     Ok(Json(updated_note))
 }
 
+// DELETE /api/projects/:project_id/notes/:note_id
+pub async fn delete_project_note(
+    State(pool): State<PgPool>,
+    claims: UserClaims,
+    Path((project_id, note_id)): Path<(Uuid, Uuid)>,
+) -> Result<StatusCode, (StatusCode, String)> {
+    // 1. Fetch note to verify project mapping and ownership
+    let note = sqlx::query!(
+        r#"SELECT author_id, project_id FROM field_logs WHERE id = $1"#,
+        note_id
+    )
+    .fetch_optional(&pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+    .ok_or((StatusCode::NOT_FOUND, "Note not found".to_string()))?;
+
+    if note.project_id != project_id {
+        return Err((StatusCode::BAD_REQUEST, "Note does not belong to this project".to_string()));
+    }
+
+    // 🛡️ SECURITY: Only the author or system admin can delete the note
+    if note.author_id != claims.sub && claims.role != "ADMIN" {
+        return Err((StatusCode::FORBIDDEN, "Only the author or an admin can delete this note".to_string()));
+    }
+
+    // 2. Perform the deletion
+    sqlx::query!(
+        "DELETE FROM field_logs WHERE id = $1",
+        note_id
+    )
+    .execute(&pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
 // apps/backend/src/api/projects.rs
 // ... add to the bottom of the file ...
 

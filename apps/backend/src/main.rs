@@ -164,7 +164,7 @@ export * from './LoginResponse';
         .route("/api/projects/:project_id/stats", get(api::projects::get_project_stats))
         // ─── NEW PHASE 2 ENDPOINTS (NOTES & MESSAGES) ─────────────────────────
         .route("/api/projects/:project_id/notes", get(api::projects::get_project_notes).post(api::projects::create_project_note))
-        .route("/api/projects/:project_id/notes/:note_id", patch(api::projects::update_project_note))
+        .route("/api/projects/:project_id/notes/:note_id", patch(api::projects::update_project_note).delete(api::projects::delete_project_note))
         .route("/api/projects/:project_id/messages", get(api::projects::get_project_messages).post(api::projects::create_project_message))
 
         // ─── NEW PHASE 3 ENDPOINTS (IMPACT METRICS) ────────────────────────────

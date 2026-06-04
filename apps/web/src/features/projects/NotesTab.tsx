@@ -12,7 +12,7 @@ import type {
   UpdateFieldLogRequest,
 } from '@pulse/shared-types';
 import { Dialog } from '../../components/ui/Dialog';
-import { Pencil } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 
 const createNoteSchema = z.object({
   content: z.string().min(1, 'Note cannot be empty').max(10000),
@@ -46,10 +46,12 @@ function NoteBlock({
   note,
   currentUserId,
   onEdit,
+  onDelete,
 }: {
   note: FieldLogResponse;
   currentUserId: string | null;
   onEdit: () => void;
+  onDelete: () => void;
 }) {
   const { name, role } = authorLabel(note.author_id, currentUserId);
   const created = new Date(note.created_at).toLocaleString(undefined, {
@@ -73,14 +75,24 @@ function NoteBlock({
             <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400">(edited)</span>
           )}
           {isOwner && (
-            <button
-              type="button"
-              onClick={onEdit}
-              className="inline-flex items-center gap-1 text-xs font-bold text-sky-600 hover:text-sky-500"
-            >
-              <Pencil className="w-3 h-3" />
-              Edit
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={onEdit}
+                className="inline-flex items-center gap-1 text-xs font-bold text-sky-600 hover:text-sky-500 cursor-pointer"
+              >
+                <Pencil className="w-3 h-3" />
+                <span>Edit</span>
+              </button>
+              <button
+                type="button"
+                onClick={onDelete}
+                className="inline-flex items-center gap-1 text-xs font-bold text-red-600 hover:text-red-500 cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Delete</span>
+              </button>
+            </div>
           )}
         </div>
       </header>
@@ -134,8 +146,17 @@ export default function NotesTab({ projectId }: NotesTabProps) {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (noteId: string) => {
+      await api.delete(`/projects/${projectId}/notes/${noteId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['project-notes', projectId] });
+    },
+  });
+
   const sortedNotes = [...notes].sort(
-    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
 
   return (
@@ -192,6 +213,11 @@ export default function NotesTab({ projectId }: NotesTabProps) {
               onEdit={() => {
                 setEditingNote(note);
                 setEditContent(note.content);
+              }}
+              onDelete={() => {
+                if (window.confirm('Are you sure you want to delete this note?')) {
+                  deleteMutation.mutate(note.id);
+                }
               }}
             />
           ))}
