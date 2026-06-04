@@ -338,7 +338,7 @@ pub async fn update_project_budget(
     )
     .execute(&mut *tx).await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    // If threshold crossed, enqueue the notification into our webhook delivery queue in the same transaction
+    // If threshold crossed, enqueue the notification into our webhook delivery queue and insert an alert in the same transaction
     if should_trigger_warning {
         let webhook_payload = serde_json::json!({
             "event_type": "project.budget_warning",
@@ -355,6 +355,20 @@ pub async fn update_project_budget(
             VALUES ($1, 'PENDING')
             "#,
             webhook_payload
+        )
+        .execute(&mut *tx).await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+        let alert_message = format!(
+            "Project '{}' has spent {:.1}% of its allocated budget.",
+            project.name, utilization
+        );
+        sqlx::query!(
+            r#"
+            INSERT INTO alerts (project_id, message, severity, dismissed)
+            VALUES ($1, $2, 'high', FALSE)
+            "#,
+            project_id,
+            alert_message
         )
         .execute(&mut *tx).await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     }

@@ -161,6 +161,8 @@ export * from './LoginResponse';
         .route("/api/media/confirm", post(api::media::confirm_upload))
 	    .route("/api/projects/:project_id/budget", patch(api::projects::update_project_budget))
         .route("/api/projects/:project_id/alerts", get(api::alerts::get_alerts))
+        .route("/api/alerts", get(api::alerts::get_global_alerts))
+        .route("/api/alerts/:alert_id/dismiss", post(api::alerts::dismiss_alert))
         .route("/api/projects/:project_id/stats", get(api::projects::get_project_stats))
         // ─── NEW PHASE 2 ENDPOINTS (NOTES & MESSAGES) ─────────────────────────
         .route("/api/projects/:project_id/notes", get(api::projects::get_project_notes).post(api::projects::create_project_note))
