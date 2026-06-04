@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { User, Briefcase, Shield, Eye, Globe } from "lucide-react";
 import { api } from "../../lib/api";
 import { TENANT_COUNTRIES, DEFAULT_COUNTRY_ID } from "../../lib/countries";
+import { brand } from "../../config/brand";
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -37,11 +38,16 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white dark:bg-slate-900 rounded-xl shadow-lg p-8 border border-slate-200 dark:border-slate-800">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-[#F5FBFF] p-4 dark:bg-[#0F172A]">
+      <div className="w-full max-w-md rounded-[8px] border border-slate-200 bg-white p-8 shadow-xl shadow-blue-100/50 dark:border-slate-800 dark:bg-[#0B1220] dark:shadow-none">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Pulse-Field Suite</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">Select your region and role to enter the workspace</p>
+          <img
+            src={brand.logoUrl}
+            alt={`${brand.appName} logo`}
+            className="mx-auto mb-4 h-20 w-20 rounded-[8px] object-cover shadow-sm ring-1 ring-slate-200 dark:ring-slate-800"
+          />
+          <h1 className="text-2xl font-extrabold text-slate-950 dark:text-white">{brand.appName}</h1>
+          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Select your region and role to enter the {brand.organization} workspace</p>
         </div>
 
         <div className="mb-6">
@@ -78,7 +84,7 @@ export const LoginPage: React.FC = () => {
               key={id}
               onClick={() => handleLogin(id)}
               disabled={loading}
-              className="w-full flex items-center justify-between p-4 border border-slate-200 dark:border-slate-800 rounded-lg hover:border-blue-500 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-slate-800 transition-all group disabled:opacity-50"
+              className="group flex min-h-[60px] w-full items-center justify-between rounded-[8px] border border-slate-200 p-4 transition-all hover:border-[#1273DE] hover:bg-[#F1F7FF] disabled:opacity-50 dark:border-slate-800 dark:hover:border-blue-500 dark:hover:bg-slate-900"
             >
               <div className="flex items-center gap-3">
                 <Icon className={`h-5 w-5 ${color}`} />

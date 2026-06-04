@@ -18,7 +18,7 @@
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.77.0",
     "react-router-dom": "^7.0.2",
-    "shared-types": "workspace:*",
+    "@pulse/shared-types": "file:../../packages/shared-types",
     "zod": "^4.4.3"
   },
   "devDependencies": {

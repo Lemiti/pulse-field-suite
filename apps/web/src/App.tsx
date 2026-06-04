@@ -1,5 +1,6 @@
 import { LoginPage } from "./features/auth/LoginPage";
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import Landing from './features/landing/Landing'
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ProtectedRoute } from "./features/auth/ProtectedRoute";
 import MainLayout from './layout/MainLayout';
@@ -28,6 +29,7 @@ function App() {
         <SyncManager />
         <BrowserRouter>
           <Routes>
+            <Route path="/landing" element={<Landing />} />
             <Route path="/login" element={<LoginPage />} />
               <Route element={<ProtectedRoute />}>
                 <Route path="/" element={<MainLayout />}>
