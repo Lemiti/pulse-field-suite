@@ -6,6 +6,7 @@ import {
   Clock,
   Loader2,
   ChevronDown,
+  Plus,
 } from 'lucide-react';
 
 const STATUS_CONFIG: Record<
@@ -51,6 +52,7 @@ interface ProjectTaskBoardProps {
   isLoading: boolean;
   onStatusClick: (taskId: string, position: { top: number; left: number }) => void;
   isUpdating: boolean;
+  onCreatePhase: () => void;
 }
 
 export function groupTasksByPhase(phases: PhaseResponse[], tasks: TaskResponse[]) {
@@ -74,13 +76,11 @@ export function groupTasksByPhase(phases: PhaseResponse[], tasks: TaskResponse[]
 
   for (const phase of phases) {
     const phaseTasks = phaseBuckets.get(phase.id) ?? [];
-    if (phaseTasks.length > 0) {
-      byPhase.push({
-        phaseId: phase.id,
-        phaseName: phase.name,
-        tasks: phaseTasks,
-      });
-    }
+    byPhase.push({
+      phaseId: phase.id,
+      phaseName: phase.name,
+      tasks: phaseTasks,
+    });
   }
 
   return { uncategorized, byPhase };
@@ -130,6 +130,7 @@ export default function ProjectTaskBoard({
   isLoading,
   onStatusClick,
   isUpdating,
+  onCreatePhase,
 }: ProjectTaskBoardProps) {
   const { uncategorized, byPhase } = groupTasksByPhase(phases, tasks);
 
@@ -141,7 +142,7 @@ export default function ProjectTaskBoard({
     );
   }
 
-  if (tasks.length === 0) {
+  if (tasks.length === 0 && phases.length === 0) {
     return (
       <p className="text-center py-12 text-slate-500 dark:text-slate-400">
         No tasks yet. Create your first task to get started.
@@ -153,7 +154,7 @@ export default function ProjectTaskBoard({
     <div className="space-y-8">
       {uncategorized.length > 0 && (
         <section className="border-2 border-amber-300/80 dark:border-amber-700/80 bg-amber-50/80 dark:bg-amber-950/30 rounded-xl p-6">
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex flex-wrap items-center gap-3 mb-4">
             <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
             <div className="flex-1">
               <h2 className="text-lg font-bold text-amber-900 dark:text-amber-100">
@@ -166,6 +167,14 @@ export default function ProjectTaskBoard({
             <span className="px-3 py-1 rounded-full text-sm font-bold bg-amber-200/80 dark:bg-amber-900 text-amber-900 dark:text-amber-100">
               {uncategorized.length}
             </span>
+            <button
+              type="button"
+              onClick={onCreatePhase}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold shadow-sm transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Create Phase
+            </button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {uncategorized.map((task) => (
@@ -192,14 +201,20 @@ export default function ProjectTaskBoard({
             </span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {phaseTasks.map((task) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                onStatusClick={(pos) => onStatusClick(task.id, pos)}
-                isLoading={isUpdating}
-              />
-            ))}
+            {phaseTasks.length > 0 ? (
+              phaseTasks.map((task) => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  onStatusClick={(pos) => onStatusClick(task.id, pos)}
+                  isLoading={isUpdating}
+                />
+              ))
+            ) : (
+              <div className="md:col-span-2 lg:col-span-3 rounded-lg border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 p-4 text-sm text-slate-500 dark:text-slate-400">
+                No tasks in this phase yet.
+              </div>
+            )}
           </div>
         </section>
       ))}

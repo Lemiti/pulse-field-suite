@@ -92,7 +92,7 @@ export default function ImpactGallery({ tasks }: ImpactGalleryProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {tasksWithPhotos.map((task) => {
           const photoUrl = getGDriveUrl(task);
-          const displayDate = formatDate(task.updatedAt || task.created_at);
+          const displayDate = formatDate(task.updated_at || task.created_at);
           const officerName = (task as any).assigned_to_name || (task as any).assigned_to || 'Unknown Officer';
 
           return (
@@ -163,7 +163,7 @@ interface LightboxModalProps {
  */
 function LightboxModal({ task, onClose }: LightboxModalProps) {
   const photoUrl = getGDriveUrl(task);
-  const displayDate = formatDate(task.updatedAt || task.created_at);
+  const displayDate = formatDate(task.updated_at || task.created_at);
 
   if (!photoUrl) return null;
 

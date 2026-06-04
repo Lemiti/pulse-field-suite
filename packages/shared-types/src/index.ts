@@ -32,3 +32,5 @@ export * from './GlobalMetricTemplate';
 export * from './ProjectImpactMetricResponse';
 export * from './UpdateImpactMetricRequest';
 export * from './WebhookDeliveryQueueItem';
+export * from './PhaseResponse';
+export * from './CreatePhaseRequest';

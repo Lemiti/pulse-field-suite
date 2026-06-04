@@ -1,5 +1,5 @@
 use axum::{extract::State, http::StatusCode, Json};
-use sqlx::PgPool;
+use sqlx::{PgPool, Postgres, Transaction};
 use axum::extract::Path;
 use rust_decimal::prelude::ToPrimitive;
 use uuid::Uuid;
@@ -11,6 +11,31 @@ use crate::models::{
     ProjectMessageResponse, CreateProjectMessageRequest, ProjectImpactMetricResponse, UpdateImpactMetricRequest
 };
 
+pub async fn refresh_project_status(
+    tx: &mut Transaction<'_, Postgres>,
+    project_id: Uuid,
+) -> Result<(), sqlx::Error> {
+    sqlx::query!(
+        r#"
+        UPDATE projects
+        SET status = CASE
+            WHEN EXISTS(SELECT 1 FROM tasks WHERE project_id = $1)
+                AND NOT EXISTS(SELECT 1 FROM tasks WHERE project_id = $1 AND status <> 'COMPLETED')
+                THEN 'COMPLETED'::project_status
+            WHEN EXISTS(SELECT 1 FROM tasks WHERE project_id = $1 AND status IN ('IN_PROGRESS', 'COMPLETED'))
+                THEN 'IN_PROGRESS'::project_status
+            ELSE 'PLANNING'::project_status
+        END
+        WHERE id = $1
+        "#,
+        project_id
+    )
+    .execute(&mut **tx)
+    .await?;
+
+    Ok(())
+}
+
 // GET /api/projects
 pub async fn get_projects(
     State(pool): State<PgPool>,
@@ -21,17 +46,41 @@ pub async fn get_projects(
     let projects = sqlx::query_as!(
         ProjectResponse,
         r#"
-        SELECT 
-            id, country_id, name, description, 
-            budget_allocated, 
-            budget_spent, 
-            status as "status: ProjectStatus", 
-            funding_sources,
-            focus_area as "focus_area: ProjectFocusArea",
-            location_metadata
-        FROM projects
-        WHERE country_id = $1
-        ORDER BY created_at DESC
+        SELECT
+            p.id,
+            p.country_id,
+            p.name,
+            p.description,
+            p.budget_allocated,
+            p.budget_spent,
+            CASE
+                WHEN task_rollup.task_count > 0 AND task_rollup.completed_count = task_rollup.task_count
+                    THEN 'COMPLETED'::project_status
+                WHEN task_rollup.active_count > 0
+                    THEN 'IN_PROGRESS'::project_status
+                ELSE 'PLANNING'::project_status
+            END as "status!: ProjectStatus",
+            p.funding_sources,
+            p.focus_area as "focus_area: ProjectFocusArea",
+            p.location_metadata,
+            CASE
+                WHEN task_rollup.total_days > 0
+                    THEN (task_rollup.completed_days::float8 / task_rollup.total_days::float8) * 100.0
+                ELSE 0.0
+            END as "progress_percentage!"
+        FROM projects p
+        LEFT JOIN LATERAL (
+            SELECT
+                COUNT(*) as task_count,
+                COUNT(*) FILTER (WHERE status = 'COMPLETED') as completed_count,
+                COUNT(*) FILTER (WHERE status IN ('IN_PROGRESS', 'COMPLETED')) as active_count,
+                COALESCE(SUM(GREATEST(end_date - start_date, 0)), 0) as total_days,
+                COALESCE(SUM(CASE WHEN status = 'COMPLETED' THEN GREATEST(end_date - start_date, 0) ELSE 0 END), 0) as completed_days
+            FROM tasks
+            WHERE project_id = p.id
+        ) task_rollup ON TRUE
+        WHERE p.country_id = $1
+        ORDER BY p.created_at DESC
         "#,
         claims.country_id
     )
@@ -53,16 +102,40 @@ pub async fn get_project(
     let project = sqlx::query_as!(
         ProjectResponse,
         r#"
-        SELECT 
-            id, country_id, name, description, 
-            budget_allocated, 
-            budget_spent, 
-            status as "status: ProjectStatus", 
-            funding_sources,
-            focus_area as "focus_area: ProjectFocusArea",
-            location_metadata
-        FROM projects
-        WHERE id = $1 AND country_id = $2
+        SELECT
+            p.id,
+            p.country_id,
+            p.name,
+            p.description,
+            p.budget_allocated,
+            p.budget_spent,
+            CASE
+                WHEN task_rollup.task_count > 0 AND task_rollup.completed_count = task_rollup.task_count
+                    THEN 'COMPLETED'::project_status
+                WHEN task_rollup.active_count > 0
+                    THEN 'IN_PROGRESS'::project_status
+                ELSE 'PLANNING'::project_status
+            END as "status!: ProjectStatus",
+            p.funding_sources,
+            p.focus_area as "focus_area: ProjectFocusArea",
+            p.location_metadata,
+            CASE
+                WHEN task_rollup.total_days > 0
+                    THEN (task_rollup.completed_days::float8 / task_rollup.total_days::float8) * 100.0
+                ELSE 0.0
+            END as "progress_percentage!"
+        FROM projects p
+        LEFT JOIN LATERAL (
+            SELECT
+                COUNT(*) as task_count,
+                COUNT(*) FILTER (WHERE status = 'COMPLETED') as completed_count,
+                COUNT(*) FILTER (WHERE status IN ('IN_PROGRESS', 'COMPLETED')) as active_count,
+                COALESCE(SUM(GREATEST(end_date - start_date, 0)), 0) as total_days,
+                COALESCE(SUM(CASE WHEN status = 'COMPLETED' THEN GREATEST(end_date - start_date, 0) ELSE 0 END), 0) as completed_days
+            FROM tasks
+            WHERE project_id = p.id
+        ) task_rollup ON TRUE
+        WHERE p.id = $1 AND p.country_id = $2
         "#,
         project_id,
         claims.country_id
@@ -98,7 +171,8 @@ pub async fn create_project(
             status as "status: ProjectStatus", 
             funding_sources,
             focus_area as "focus_area: ProjectFocusArea",
-            location_metadata
+            location_metadata,
+            0.0::float8 as "progress_percentage!"
         "#,
         claims.country_id, // Automatically bind the project to the user's country!
         payload.name,
@@ -176,13 +250,46 @@ pub async fn update_project_budget(
     let updated_project = sqlx::query_as!(
         ProjectResponse,
         r#"
-        UPDATE projects 
-        SET budget_spent = budget_spent + $1,
-            budget_warning_sent = CASE WHEN $3 = TRUE THEN TRUE ELSE budget_warning_sent END
-        WHERE id = $2
-        RETURNING 
-            id, country_id, name, description, budget_allocated, budget_spent, status as "status: ProjectStatus", funding_sources,
-            focus_area as "focus_area: ProjectFocusArea", location_metadata
+        WITH updated_project AS (
+            UPDATE projects
+            SET budget_spent = budget_spent + $1,
+                budget_warning_sent = CASE WHEN $3 = TRUE THEN TRUE ELSE budget_warning_sent END
+            WHERE id = $2
+            RETURNING *
+        )
+        SELECT
+            p.id,
+            p.country_id,
+            p.name,
+            p.description,
+            p.budget_allocated,
+            p.budget_spent,
+            CASE
+                WHEN task_rollup.task_count > 0 AND task_rollup.completed_count = task_rollup.task_count
+                    THEN 'COMPLETED'::project_status
+                WHEN task_rollup.active_count > 0
+                    THEN 'IN_PROGRESS'::project_status
+                ELSE 'PLANNING'::project_status
+            END as "status!: ProjectStatus",
+            p.funding_sources,
+            p.focus_area as "focus_area: ProjectFocusArea",
+            p.location_metadata,
+            CASE
+                WHEN task_rollup.total_days > 0
+                    THEN (task_rollup.completed_days::float8 / task_rollup.total_days::float8) * 100.0
+                ELSE 0.0
+            END as "progress_percentage!"
+        FROM updated_project p
+        LEFT JOIN LATERAL (
+            SELECT
+                COUNT(*) as task_count,
+                COUNT(*) FILTER (WHERE status = 'COMPLETED') as completed_count,
+                COUNT(*) FILTER (WHERE status IN ('IN_PROGRESS', 'COMPLETED')) as active_count,
+                COALESCE(SUM(GREATEST(end_date - start_date, 0)), 0) as total_days,
+                COALESCE(SUM(CASE WHEN status = 'COMPLETED' THEN GREATEST(end_date - start_date, 0) ELSE 0 END), 0) as completed_days
+            FROM tasks
+            WHERE project_id = p.id
+        ) task_rollup ON TRUE
         "#,
         payload.amount_spent,
         project_id,
@@ -368,6 +475,10 @@ pub async fn create_project_phase(
     Path(project_id): Path<Uuid>,
     Json(payload): Json<CreatePhaseRequest>,
 ) -> Result<Json<PhaseResponse>, (StatusCode, String)> {
+    if payload.project_id != project_id {
+        return Err((StatusCode::BAD_REQUEST, "project_id must match the route project id".to_string()));
+    }
+
     let project_exists = sqlx::query_scalar!(
         r#"SELECT EXISTS(SELECT 1 FROM projects WHERE id = $1 AND country_id = $2)"#,
         project_id,

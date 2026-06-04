@@ -1,9 +1,23 @@
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { ProjectResponse, AuditLogResponse } from '@pulse/shared-types';
-import { ChevronDown, AlertTriangle, TrendingUp } from 'lucide-react';
+import { ChevronDown, AlertTriangle, TrendingUp, Search } from 'lucide-react';
+
+const actionEventMap: Record<string, string> = {
+  UPDATE_TASK_STATUS: 'Task Status Changed',
+  UPDATE_BUDGET: 'Budget Allocation Modified',
+  CREATE_TASK: 'Task Created',
+  UPDATE_PROJECT: 'Project Updated',
+  DELETE_TASK: 'Task Deleted',
+  CREATE_PROJECT: 'Project Created',
+  ADD_EXPENSE: 'Recorded Expense',
+};
+
+const formatActionName = (action: string): string => {
+  return actionEventMap[action] || action;
+};
 
 /**
  * AuditLogs Component
@@ -13,16 +27,23 @@ import { ChevronDown, AlertTriangle, TrendingUp } from 'lucide-react';
  * Features:
  * - Project dropdown selector for audit trail inspection
  * - React Query integration for efficient data fetching
- * - Tab-based navigation (All Logs, System Alerts)
+ * - Tab-based navigation (All Logs, System Alerts) with URL params
+ * - Search bar with filter capabilities (action name, user name, and values)
  * - Human-readable action event mapping
- * - High-contrast table display with proper accessibility
+ * - High-contrast table display showing the performer's actual name
  * - WCAG AAA compliance with 48x48px touch targets
  * - Light/dark mode support
  */
 export default function AuditLogs() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'All Logs';
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Reset search query when project changes
+  useEffect(() => {
+    setSearchQuery('');
+  }, [selectedProjectId]);
 
   // ============= QUERIES =============
   // Fetch all projects for dropdown selector
@@ -48,6 +69,24 @@ export default function AuditLogs() {
   const auditLogs = Array.isArray(auditLogsData) ? auditLogsData : [];
   const selectedProject = projects?.find((p) => p.id === selectedProjectId);
 
+  // ============= SEARCH FILTERING =============
+  const filteredLogs = useMemo(() => {
+    if (!searchQuery.trim()) return auditLogs;
+    const query = searchQuery.toLowerCase().trim();
+    return auditLogs.filter((log) => {
+      const actionName = formatActionName(log.action).toLowerCase();
+      const userName = (log.user_name || '').toLowerCase();
+      const oldVal = (log.old_value || '').toLowerCase();
+      const newVal = (log.new_value || '').toLowerCase();
+      return (
+        actionName.includes(query) ||
+        userName.includes(query) ||
+        oldVal.includes(query) ||
+        newVal.includes(query)
+      );
+    });
+  }, [auditLogs, searchQuery]);
+
   // ============= RENDER =============
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-fade-in font-sans select-none">
@@ -64,7 +103,7 @@ export default function AuditLogs() {
       </div>
 
       {/* ============= PROJECT SELECTOR SECTION ============= */}
-      <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6 space-y-4">
+      <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6 space-y-4 animate-fade-in">
         <label className="block text-sm font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
           Select Project for Audit Trail
         </label>
@@ -76,7 +115,7 @@ export default function AuditLogs() {
             <select
               value={selectedProjectId || ''}
               onChange={(e) => setSelectedProjectId(e.target.value || null)}
-              className="w-full h-12 px-4 py-3 rounded-lg border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all appearance-none cursor-pointer"
+              className="w-full h-12 px-4 py-3 rounded-lg border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all appearance-none cursor-pointer"
             >
               <option value="">-- Choose a project --</option>
               {projects.map((project) => (
@@ -94,14 +133,64 @@ export default function AuditLogs() {
         )}
       </div>
 
+      {/* ============= SEARCH & TAB NAVIGATION CONTROLS ============= */}
+      {selectedProject && (
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4 animate-fade-in">
+          {/* Search bar */}
+          <div className="relative flex-1 max-w-md">
+            <input
+              type="text"
+              placeholder="Search logs by event, user, details..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-10 py-2 border-2 border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm h-10"
+            />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs font-bold transition-colors"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+
+          {/* Tab buttons */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setSearchParams({ tab: 'All Logs' })}
+              className={`px-4 py-2 text-sm font-bold rounded-lg transition-colors h-10 ${
+                activeTab === 'All Logs'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300'
+              }`}
+            >
+              All Logs
+            </button>
+            <button
+              onClick={() => setSearchParams({ tab: 'System Alerts' })}
+              className={`px-4 py-2 text-sm font-bold rounded-lg transition-colors h-10 ${
+                activeTab === 'System Alerts'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300'
+              }`}
+            >
+              System Alerts
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ============= CONTENT TABS ============= */}
       {selectedProject ? (
         <div className="space-y-6">
           {activeTab === 'All Logs' && (
-            <AllLogsTab logs={auditLogs} isLoading={logsLoading} projectName={selectedProject.name} />
+            <AllLogsTab logs={filteredLogs} isLoading={logsLoading} projectName={selectedProject.name} />
           )}
           {activeTab === 'System Alerts' && (
-            <SystemAlertsTab logs={auditLogs} isLoading={logsLoading} projectName={selectedProject.name} />
+            <SystemAlertsTab logs={filteredLogs} isLoading={logsLoading} projectName={selectedProject.name} />
           )}
         </div>
       ) : (
@@ -123,26 +212,7 @@ interface AllLogsTabProps {
   projectName: string;
 }
 
-/**
- * Renders a comprehensive audit log table with human-readable action names,
- * performer information, change deltas, and timestamps.
- *
- * Accessibility: 48x48px minimum row heights for touch targets, high contrast text.
- */
 function AllLogsTab({ logs, isLoading, projectName }: AllLogsTabProps) {
-  const actionEventMap: Record<string, string> = {
-    UPDATE_TASK_STATUS: 'Task Status Changed',
-    UPDATE_BUDGET: 'Budget Allocation Modified',
-    CREATE_TASK: 'Task Created',
-    UPDATE_PROJECT: 'Project Updated',
-    DELETE_TASK: 'Task Deleted',
-    CREATE_PROJECT: 'Project Created',
-  };
-
-  const formatActionName = (action: string): string => {
-    return actionEventMap[action] || action;
-  };
-
   const formatTimestamp = (dateStr: string | null | undefined): string => {
     if (!dateStr) return 'Unknown';
     try {
@@ -174,15 +244,14 @@ function AllLogsTab({ logs, isLoading, projectName }: AllLogsTabProps) {
     return (
       <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-12 text-center border border-dashed border-slate-300 dark:border-slate-600">
         <p className="text-slate-600 dark:text-slate-400">
-          No audit logs available for {projectName}
+          No matching audit logs found for {projectName}
         </p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
-      {/* ============= TABLE HEADER ============= */}
+    <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm animate-fade-in">
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
@@ -202,7 +271,6 @@ function AllLogsTab({ logs, isLoading, projectName }: AllLogsTabProps) {
             </tr>
           </thead>
 
-          {/* ============= TABLE BODY ============= */}
           <tbody>
             {logs.map((log, idx) => (
               <tr
@@ -215,22 +283,21 @@ function AllLogsTab({ logs, isLoading, projectName }: AllLogsTabProps) {
                 </td>
 
                 {/* Performed By */}
-                <td className="px-4 py-4 text-sm text-slate-700 dark:text-slate-300">
-                  <span className="font-mono text-xs bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded">
-                    {(log as any).user_id
-                      ? (log as any).user_id.substring(0, 8)
-                      : 'System'}
+                <td className="px-4 py-4 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                  {log.user_name}
+                  <span className="block text-[10px] text-slate-400 font-mono font-normal">
+                    {log.user_id}
                   </span>
                 </td>
 
                 {/* Change Delta */}
                 <td className="px-4 py-4">
                   <div className="flex items-center gap-2 text-sm">
-                    <span className="px-3 py-1 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white font-medium line-clamp-1 max-w-[120px]">
+                    <span className="px-3 py-1 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white font-medium line-clamp-2 max-w-[200px]" title={log.old_value || 'N/A'}>
                       {log.old_value || 'N/A'}
                     </span>
                     <span className="text-slate-400 dark:text-slate-500 font-bold">→</span>
-                    <span className="px-3 py-1 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-900 dark:text-blue-200 font-medium line-clamp-1 max-w-[120px]">
+                    <span className="px-3 py-1 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-900 dark:text-blue-200 font-medium line-clamp-2 max-w-[200px]" title={log.new_value || 'N/A'}>
                       {log.new_value || 'N/A'}
                     </span>
                   </div>
@@ -246,10 +313,9 @@ function AllLogsTab({ logs, isLoading, projectName }: AllLogsTabProps) {
         </table>
       </div>
 
-      {/* ============= TABLE FOOTER INFO ============= */}
       <div className="bg-slate-50 dark:bg-slate-900/30 px-4 py-3 border-t border-slate-200 dark:border-slate-700">
-        <p className="text-xs text-slate-600 dark:text-slate-400">
-          Showing {logs.length} audit log{logs.length !== 1 ? 's' : ''} • All timestamps in UTC
+        <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">
+          Showing {logs.length} log{logs.length !== 1 ? 's' : ''} • All timestamps in UTC
         </p>
       </div>
     </div>
@@ -263,10 +329,6 @@ interface SystemAlertsTabProps {
   projectName: string;
 }
 
-/**
- * Filters audit logs for critical actions and highlights budget-related alerts
- * with high-contrast warning styling for operator visibility.
- */
 function SystemAlertsTab({ logs, isLoading, projectName }: SystemAlertsTabProps) {
   if (isLoading) {
     return (
@@ -286,13 +348,13 @@ function SystemAlertsTab({ logs, isLoading, projectName }: SystemAlertsTabProps)
     );
   }
 
-  // Filter for critical actions: budget updates and status blocks
-  const criticalActions = ['UPDATE_BUDGET', 'UPDATE_TASK_STATUS', 'UPDATE_PROJECT'];
+  // Filter for critical actions
+  const criticalActions = ['UPDATE_BUDGET', 'UPDATE_TASK_STATUS', 'UPDATE_PROJECT', 'ADD_EXPENSE'];
   const criticalLogs = logs.filter((log) => criticalActions.includes(log.action));
 
   if (criticalLogs.length === 0) {
     return (
-      <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-8 text-center border border-emerald-200 dark:border-emerald-800">
+      <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-8 text-center border border-emerald-200 dark:border-emerald-800 animate-fade-in">
         <p className="text-emerald-900 dark:text-emerald-200 font-semibold">
           ✓ No critical alerts for {projectName}
         </p>
@@ -301,9 +363,9 @@ function SystemAlertsTab({ logs, isLoading, projectName }: SystemAlertsTabProps)
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 animate-fade-in">
       {criticalLogs.map((log, idx) => {
-        // Highlight budget warnings if usage > 90%
+        // Highlight budget warnings if usage > 90% or recorded expense is large
         const isBudgetWarning =
           log.action === 'UPDATE_BUDGET' &&
           log.new_value &&
@@ -321,19 +383,21 @@ function SystemAlertsTab({ logs, isLoading, projectName }: SystemAlertsTabProps)
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="w-5 h-5 flex-shrink-0" />
-                <h3 className="font-semibold">
+                <h3 className="font-semibold text-sm">
                   {log.action === 'UPDATE_BUDGET'
                     ? 'Budget Allocation Changed'
                     : log.action === 'UPDATE_TASK_STATUS'
                       ? 'Task Status Updated'
-                      : 'Project Modified'}
+                      : log.action === 'ADD_EXPENSE'
+                        ? 'New Expense Recorded'
+                        : 'Project Modified'}
                 </h3>
               </div>
-              <p className="text-sm mt-1 opacity-90">
+              <p className="text-sm mt-1 opacity-90 break-words font-mono text-xs">
                 {log.old_value} → {log.new_value}
               </p>
-              <p className="text-xs mt-2 opacity-75">
-                {new Date(log.created_at || '').toLocaleString()}
+              <p className="text-xs mt-2 opacity-75 font-semibold">
+                By {log.user_name} • {new Date(log.created_at || '').toLocaleString()}
               </p>
             </div>
           </div>

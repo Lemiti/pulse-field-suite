@@ -6,6 +6,22 @@ import type { ProjectResponse, ProjectStatsResponse, UpdateBudgetRequest } from 
 import { getApiErrorMessage } from '../../lib/errors';
 import { Dialog } from '../../components/ui/Dialog';
 import { AlertTriangle, DollarSign } from 'lucide-react';
+import { z } from 'zod';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+
+const expenseSchema = z.object({
+  amount: z
+    .number()
+    .gt(0, 'Amount must be greater than 0'),
+  reason: z
+    .string()
+    .min(1, 'Reason is required')
+    .transform((val) => val.trim())
+    .refine((val) => val.length > 0, 'Reason cannot be empty'),
+});
+
+type ExpenseFormValues = z.infer<typeof expenseSchema>;
 
 interface BudgetStatusBarProps {
   allocated?: number;
@@ -138,9 +154,21 @@ export default function BudgetStatusBar({ allocated, spent, projectId }: BudgetS
   const { activeCountryId } = useActiveCountry();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [expenseAmount, setExpenseAmount] = useState('');
-  const [expenseReason, setExpenseReason] = useState('');
   const [budgetError, setBudgetError] = useState<string | null>(null);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isValid },
+  } = useForm<ExpenseFormValues>({
+    resolver: zodResolver(expenseSchema),
+    mode: 'onChange',
+    defaultValues: {
+      amount: undefined,
+      reason: '',
+    },
+  });
 
   const { data: stats } = useQuery<ProjectStatsResponse>({
     queryKey: ['project-stats', projectId, activeCountryId],
@@ -171,19 +199,13 @@ export default function BudgetStatusBar({ allocated, spent, projectId }: BudgetS
       queryClient.invalidateQueries({ queryKey: ['project-stats', projectId] });
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       setDialogOpen(false);
-      setExpenseAmount('');
-      setExpenseReason('');
+      reset();
       setBudgetError(null);
     },
     onError: (err: unknown) => {
       setBudgetError(getApiErrorMessage(err, 'Failed to record expense.'));
     },
   });
-
-  const parsedAmount = parseFloat(expenseAmount);
-  const hasValidAmount = Number.isFinite(parsedAmount) && parsedAmount > 0;
-  const hasReason = expenseReason.trim().length > 0;
-  const canApplyBudget = hasValidAmount && hasReason && !budgetMutation.isPending;
 
   if (projectId) {
     const alloc = Number(project?.budget_allocated) || 0;
@@ -216,21 +238,16 @@ export default function BudgetStatusBar({ allocated, spent, projectId }: BudgetS
           onOpenChange={(open) => {
             setDialogOpen(open);
             if (!open) {
-              setExpenseAmount('');
-              setExpenseReason('');
+              reset();
               setBudgetError(null);
             }
           }}
           title="Record expense"
         >
           <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              const amount = parseFloat(expenseAmount);
-              const reason = expenseReason.trim();
-              if (!Number.isFinite(amount) || amount <= 0 || !reason) return;
-              budgetMutation.mutate({ amount_spent: amount, reason });
-            }}
+            onSubmit={handleSubmit((values) => {
+              budgetMutation.mutate({ amount_spent: values.amount, reason: values.reason });
+            })}
             className="space-y-4"
           >
             <div>
@@ -239,29 +256,35 @@ export default function BudgetStatusBar({ allocated, spent, projectId }: BudgetS
                 type="number"
                 min="0.01"
                 step="0.01"
-                required
-                value={expenseAmount}
-                onChange={(e) => setExpenseAmount(e.target.value)}
-                className="mt-1 w-full px-3 py-2 border rounded-md dark:bg-slate-800 dark:border-slate-700"
+                {...register('amount', { valueAsNumber: true })}
+                className={`mt-1 w-full px-3 py-2 border rounded-md dark:bg-slate-800 dark:border-slate-700 ${
+                  errors.amount ? 'border-red-500 focus:ring-red-500' : ''
+                }`}
               />
+              {errors.amount?.message && (
+                <p className="text-xs text-red-500 mt-1 font-semibold">{errors.amount.message}</p>
+              )}
             </div>
             <div>
               <label className="text-xs font-bold text-slate-500 uppercase">Reason</label>
               <input
                 type="text"
-                required
-                value={expenseReason}
-                onChange={(e) => setExpenseReason(e.target.value)}
+                {...register('reason')}
                 placeholder="e.g. Pump repair, transport costs"
-                className="mt-1 w-full px-3 py-2 border rounded-md dark:bg-slate-800 dark:border-slate-700"
+                className={`mt-1 w-full px-3 py-2 border rounded-md dark:bg-slate-800 dark:border-slate-700 ${
+                  errors.reason ? 'border-red-500 focus:ring-red-500' : ''
+                }`}
               />
+              {errors.reason?.message && (
+                <p className="text-xs text-red-500 mt-1 font-semibold">{errors.reason.message}</p>
+              )}
             </div>
             {budgetError && (
               <p className="text-sm text-red-500 font-medium">{budgetError}</p>
             )}
             <button
               type="submit"
-              disabled={!canApplyBudget}
+              disabled={!isValid || budgetMutation.isPending}
               className="w-full py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {budgetMutation.isPending ? 'Saving…' : 'Apply to budget'}

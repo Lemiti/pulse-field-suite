@@ -2,4 +2,4 @@
 import type { ProjectFocusArea } from "./ProjectFocusArea";
 import type { ProjectStatus } from "./ProjectStatus";
 
-export type ProjectResponse = { id: string, country_id: string, name: string, description: string | null, budget_allocated: number, budget_spent: number, status: ProjectStatus, funding_sources: string[], focus_area: ProjectFocusArea, location_metadata: any, };
+export type ProjectResponse = { id: string, country_id: string, name: string, description: string | null, budget_allocated: number, budget_spent: number, status: ProjectStatus, funding_sources: string[], focus_area: ProjectFocusArea, location_metadata: any, progress_percentage: number, };

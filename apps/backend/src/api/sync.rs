@@ -1,6 +1,7 @@
 use axum::{extract::State, http::StatusCode, Json};
 use sqlx::PgPool;
 use crate::api::auth::UserClaims;
+use crate::api::projects::refresh_project_status;
 use crate::models::{SyncPushRequest, TaskStatus};
 use serde_json::json;
 
@@ -47,6 +48,10 @@ pub async fn push_sync(
                     .execute(&mut *tx)
                     .await
                     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+                    refresh_project_status(&mut tx, task.project_id)
+                        .await
+                        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
                     // Write Audit Log (Marking it as an OFFLINE_SYNC action!)
                     let action = "OFFLINE_SYNC_TASK_UPDATE";

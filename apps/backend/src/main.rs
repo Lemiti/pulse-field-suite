@@ -63,6 +63,8 @@ async fn main() {
         models::ProjectImpactMetricResponse::export().unwrap();
         models::UpdateImpactMetricRequest::export().unwrap();
         models::WebhookDeliveryQueueItem::export().unwrap();
+        models::PhaseResponse::export().unwrap();
+        models::CreatePhaseRequest::export().unwrap();
 
 
 
@@ -101,6 +103,8 @@ export * from './GlobalMetricTemplate';
 export * from './ProjectImpactMetricResponse';
 export * from './UpdateImpactMetricRequest';
 export * from './WebhookDeliveryQueueItem';
+export * from './PhaseResponse';
+export * from './CreatePhaseRequest';
 
 "#;
         std::fs::write("../../packages/shared-types/src/index.ts", index_content.trim())

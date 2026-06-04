@@ -71,6 +71,7 @@ export default function CreateProjectModal({
       for (let i = 0; i < phases.length; i++) {
         const phase = phases[i];
         const phasePayload: CreatePhaseRequest = {
+          project_id: project.id,
           name: phase.name,
           sort_order: i,
         };

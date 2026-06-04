@@ -2,6 +2,7 @@ use axum::{extract::{Path, State}, http::StatusCode, Json};
 use sqlx::PgPool;
 use uuid::Uuid;
 use crate::api::auth::UserClaims;
+use crate::api::projects::refresh_project_status;
 use crate::models::{CreateTaskRequest, TaskResponse, TaskStatus};
 use crate::models::UpdateTaskStatusRequest;
 
@@ -23,7 +24,9 @@ pub async fn get_tasks(
             t.name,
             t.status as "status: TaskStatus",
             t.start_date,
-            t.end_date
+            t.end_date,
+            t.created_at,
+            t.updated_at
         FROM tasks t
         JOIN projects p ON t.project_id = p.id
         WHERE t.project_id = $1 AND p.country_id = $2
@@ -64,6 +67,8 @@ pub async fn create_task(
         return Err((StatusCode::BAD_REQUEST, "end_date must be after or equal to start_date".to_string()));
     }
 
+    let mut tx = pool.begin().await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
     let task = sqlx::query_as!(
         TaskResponse,
         r#"
@@ -76,7 +81,9 @@ pub async fn create_task(
             name,
             status as "status: TaskStatus",
             start_date,
-            end_date
+            end_date,
+            created_at,
+            updated_at
         "#,
         payload.project_id,
         payload.phase_id,
@@ -84,9 +91,15 @@ pub async fn create_task(
         payload.start_date,
         payload.end_date
     )
-    .fetch_one(&pool)
+    .fetch_one(&mut *tx)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    refresh_project_status(&mut tx, payload.project_id)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    tx.commit().await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     Ok(Json(task))
 }
@@ -141,7 +154,9 @@ pub async fn update_task_status(
             name,
             status as "status: TaskStatus",
             start_date,
-            end_date
+            end_date,
+            created_at,
+            updated_at
         "#,
         payload.status as TaskStatus, // <-- payload.status is MOVED here (which is now fine!)
         task_id
@@ -149,6 +164,10 @@ pub async fn update_task_status(
     .fetch_one(&mut *tx)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    refresh_project_status(&mut tx, current_task.project_id)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     // 5. Write to Audit Log (Using the strings we prepared in step 3)
     sqlx::query!(

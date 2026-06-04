@@ -24,12 +24,14 @@ pub async fn get_audit_logs(
             a.id, 
             a.project_id, 
             a.user_id, 
+            u.name as "user_name!",
             a.action, 
             a.old_value, 
             a.new_value, 
             a.created_at
         FROM audit_logs a
         JOIN projects p ON a.project_id = p.id
+        JOIN users u ON a.user_id = u.id
         WHERE a.project_id = $1 AND p.country_id = $2
         ORDER BY a.created_at DESC
         "#,

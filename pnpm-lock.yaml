@@ -13,6 +13,9 @@ importers:
       '@hookform/resolvers':
         specifier: ^5.4.0
         version: 5.4.0(react-hook-form@7.77.0(react@19.2.7))
+      '@pulse/shared-types':
+        specifier: workspace:*
+        version: link:../../packages/shared-types
       '@tanstack/react-query':
         specifier: ^5.62.0
         version: 5.100.14(react@19.2.7)
@@ -34,9 +37,6 @@ importers:
       react-router-dom:
         specifier: ^7.0.2
         version: 7.16.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      shared-types:
-        specifier: workspace:*
-        version: link:../../packages/shared-types
       zod:
         specifier: ^4.4.3
         version: 4.4.3

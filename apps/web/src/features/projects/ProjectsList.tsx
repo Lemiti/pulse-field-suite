@@ -19,6 +19,39 @@ import {
   ArrowUpRight,
 } from 'lucide-react';
 
+function clampPercentage(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.min(100, Math.max(0, Math.round(value)));
+}
+
+function ProjectProgressBar({ percentage }: { percentage: number }) {
+  const progress = clampPercentage(percentage);
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[11px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+          Project Progress
+        </span>
+        <span className="text-sm font-extrabold text-slate-700 dark:text-slate-200">
+          {progress}%
+        </span>
+      </div>
+      <div className="w-full h-2.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+        <div
+          className="h-full rounded-full bg-blue-600 transition-all duration-500"
+          style={{ width: `${progress}%` }}
+          role="progressbar"
+          aria-label="Project progress"
+          aria-valuenow={progress}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function ProjectsList() {
   const navigate = useNavigate();
   const { activeCountryId } = useActiveCountry();
@@ -180,6 +213,7 @@ export default function ProjectsList() {
                           </div>
                           <ArrowUpRight className="w-5 h-5 text-slate-400 group-hover:text-blue-600 shrink-0" />
                         </div>
+                        <ProjectProgressBar percentage={Number(p.progress_percentage) || 0} />
                         <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
                           <BudgetStatusBar allocated={allocatedBudget} spent={spentBudget} />
                         </div>

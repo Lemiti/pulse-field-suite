@@ -11,7 +11,7 @@ use uuid::Uuid;
 
 // The data stored inside our JWT token
 #[derive(Debug, Serialize, Deserialize, Clone, TS)]
-#[ts(export, export_to = "../../packages/shared-types/src/UserClaims.ts")]
+#[ts(export, export_to = "../../../packages/shared-types/src/UserClaims.ts")]
 pub struct UserClaims {
     pub sub: Uuid,        // User ID
     pub country_id: Uuid, // Tenant ID (For Multi-Tenancy)
