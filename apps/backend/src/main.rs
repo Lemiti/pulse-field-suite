@@ -16,7 +16,8 @@ use crate::api::projects::{
     get_project_notes, create_project_note, update_project_note,
     get_project_messages, create_project_message,
     // Phase 3: Impact Analytics Handlers
-    get_project_impact_metrics, update_project_impact_metric
+    get_project_impact_metrics, update_project_impact_metric,
+    get_project_phases, create_project_phase,
 };
 
 #[tokio::main]
@@ -127,6 +128,7 @@ export * from './WebhookDeliveryQueueItem';
         .route("/api/projects", post(api::projects::create_project))
         .route("/api/projects/:project_id", get(api::projects::get_project))
         .route("/api/projects/:project_id/tasks", get(api::tasks::get_tasks))
+        .route("/api/projects/:project_id/phases", get(get_project_phases).post(create_project_phase))
         .route("/api/tasks", post(api::tasks::create_task))
 	    .route("/api/projects/:project_id/audit-logs", get(api::audit_logs::get_audit_logs))
         .route("/api/tasks/:task_id/status", patch(api::tasks::update_task_status))
@@ -175,7 +177,10 @@ async fn cors_middleware(
         let headers = response.headers_mut();
         headers.insert("access-control-allow-origin", HeaderValue::from_static("*"));
         headers.insert("access-control-allow-methods", HeaderValue::from_static("GET, POST, PATCH, PUT, DELETE, OPTIONS"));
-        headers.insert("access-control-allow-headers", HeaderValue::from_static("authorization, content-type"));
+        headers.insert(
+            "access-control-allow-headers",
+            HeaderValue::from_static("authorization, content-type, x-active-country-id"),
+        );
         return response;
     }
 
@@ -183,6 +188,9 @@ async fn cors_middleware(
     let headers = response.headers_mut();
     headers.insert("access-control-allow-origin", HeaderValue::from_static("*"));
     headers.insert("access-control-allow-methods", HeaderValue::from_static("GET, POST, PATCH, PUT, DELETE, OPTIONS"));
-    headers.insert("access-control-allow-headers", HeaderValue::from_static("authorization, content-type"));
+    headers.insert(
+        "access-control-allow-headers",
+        HeaderValue::from_static("authorization, content-type, x-active-country-id"),
+    );
     response
 }

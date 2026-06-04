@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Lock, User, Building2, ToggleRight, Database, Cloud } from 'lucide-react';
+import { Lock, User, Database, Cloud } from 'lucide-react';
 
 /**
  * JWT Payload structure (decoded from token)

@@ -93,6 +93,22 @@ pub struct CreateTaskRequest {
     pub name: String,
 }
 
+#[derive(Serialize, Deserialize, TS, Debug)]
+#[ts(export, export_to = "../../../packages/shared-types/src/PhaseResponse.ts")]
+pub struct PhaseResponse {
+    pub id: Uuid,
+    pub project_id: Uuid,
+    pub name: String,
+    pub sort_order: i32,
+}
+
+#[derive(Serialize, Deserialize, TS, Debug)]
+#[ts(export, export_to = "../../../packages/shared-types/src/CreatePhaseRequest.ts")]
+pub struct CreatePhaseRequest {
+    pub name: String,
+    pub sort_order: Option<i32>,
+}
+
 // --- AUDIT LOG MODELS ---
 
 #[derive(Serialize, Deserialize, TS, Debug)]

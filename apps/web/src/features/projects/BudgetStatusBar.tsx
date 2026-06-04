@@ -1,48 +1,35 @@
-/**
- * BudgetStatusBar Component
- * 
- * Displays a highly accessible budget utilization progress bar with color-coded
- * status indicators and formatted currency values.
- * 
- * Supports both Light Mode (#F8FAFC) and Dark Mode (#0F172A) with WCAG AAA
- * contrast standards for outdoor visibility in field operations.
- * 
- * Color Logic (SRS 3.3.1):
- * - Green (Emerald-500): 0-85% utilized (Healthy/Stable)
- * - Yellow (Amber-500): 86-100% utilized (Warning threshold)
- * - Red (Red-500): >100% utilized (Critical overspent)
- */
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { api } from '../../lib/api';
+import { useActiveCountry } from '../auth/ActiveCountryContext';
+import type { ProjectResponse, ProjectStatsResponse, UpdateBudgetRequest } from '@pulse/shared-types';
+import { getApiErrorMessage } from '../../lib/errors';
+import { Dialog } from '../../components/ui/Dialog';
+import { AlertTriangle, DollarSign } from 'lucide-react';
 
 interface BudgetStatusBarProps {
-  /** Budget allocated in USD cents or full dollars */
-  allocated: number;
-  /** Budget spent to date in USD cents or full dollars */
-  spent: number;
+  allocated?: number;
+  spent?: number;
+  projectId?: string;
 }
 
-/**
- * Formats a numeric value as USD currency using Intl API
- * @param value - Number to format
- * @returns Formatted string (e.g., "$15,000.00")
- */
 function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(value);
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
 }
 
-/**
- * Determines the color and status based on budget utilization percentage
- * @param utilizationPercent - Calculated percentage (spent / allocated * 100)
- * @returns Color classes and status label
- */
 function getUtilizationStatus(utilizationPercent: number) {
   if (utilizationPercent > 100) {
     return {
       barColor: 'bg-red-500',
       statusLabel: 'Over Budget',
       statusBadgeColor: 'bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300',
+    };
+  }
+  if (utilizationPercent >= 90) {
+    return {
+      barColor: 'bg-amber-500',
+      statusLabel: 'Critical',
+      statusBadgeColor: 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300',
     };
   }
   if (utilizationPercent >= 86) {
@@ -59,26 +46,35 @@ function getUtilizationStatus(utilizationPercent: number) {
   };
 }
 
-export default function BudgetStatusBar({ allocated, spent }: BudgetStatusBarProps) {
-  // Defensive programming: validate inputs
-  const safeAllocated = typeof allocated === 'number' && allocated >= 0 ? allocated : 0;
-  const safeSpent = typeof spent === 'number' && spent >= 0 ? spent : 0;
-
-  // Prevent division by zero
-  const utilizationPercent = safeAllocated > 0
-    ? Math.round((safeSpent / safeAllocated) * 100)
-    : 0;
-
-  // Cap visual bar at 100% to prevent overflow
+function BudgetBar({
+  allocated,
+  spent,
+  showExpenseButton,
+  onAddExpense,
+  isPending,
+}: {
+  allocated: number;
+  spent: number;
+  showExpenseButton?: boolean;
+  onAddExpense?: () => void;
+  isPending?: boolean;
+}) {
+  const utilizationPercent = allocated > 0 ? Math.round((spent / allocated) * 100) : 0;
   const barWidth = Math.min(utilizationPercent, 100);
-
+  const isCritical = utilizationPercent > 90;
   const { barColor, statusLabel, statusBadgeColor } = getUtilizationStatus(utilizationPercent);
 
   return (
-    <div className="flex flex-col gap-2 w-full">
-      {/* Header with status label and percentage */}
-      <div className="flex items-center justify-between">
-        <span className="text-[11px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+    <div
+      className={`flex flex-col gap-2 w-full rounded-lg p-3 transition-shadow ${
+        isCritical
+          ? 'ring-2 ring-orange-500/80 shadow-[0_0_20px_rgba(249,115,22,0.35)] dark:shadow-[0_0_24px_rgba(239,68,68,0.25)]'
+          : ''
+      }`}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[11px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
+          {isCritical && <AlertTriangle className="w-3.5 h-3.5 text-orange-500" />}
           Budget Utilization
         </span>
         <div className="flex items-center gap-2">
@@ -91,8 +87,7 @@ export default function BudgetStatusBar({ allocated, spent }: BudgetStatusBarPro
         </div>
       </div>
 
-      {/* Progress bar container */}
-      <div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+      <div className="w-full h-2.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
         <div
           className={`h-full rounded-full transition-all duration-500 ${barColor}`}
           style={{ width: `${barWidth}%` }}
@@ -100,39 +95,155 @@ export default function BudgetStatusBar({ allocated, spent }: BudgetStatusBarPro
           aria-valuenow={utilizationPercent}
           aria-valuemin={0}
           aria-valuemax={100}
-          aria-label={`Budget utilization: ${utilizationPercent}% of allocated budget`}
         />
       </div>
 
-      {/* Currency breakdown row */}
-      <div className="grid grid-cols-3 gap-3 mt-1 text-[11px]">
-        <div className="space-y-0.5">
-          <span className="text-slate-400 dark:text-slate-500 font-semibold uppercase tracking-wider block">
-            Allocated
-          </span>
+      <div className="grid grid-cols-3 gap-3 text-[11px]">
+        <div>
+          <span className="text-slate-400 font-semibold uppercase block">Allocated</span>
           <span className="text-slate-800 dark:text-slate-100 font-extrabold text-xs">
-            {formatCurrency(safeAllocated)}
+            {formatCurrency(allocated)}
           </span>
         </div>
-
-        <div className="space-y-0.5">
-          <span className="text-slate-400 dark:text-slate-500 font-semibold uppercase tracking-wider block">
-            Spent
-          </span>
+        <div>
+          <span className="text-slate-400 font-semibold uppercase block">Spent</span>
           <span className="text-slate-800 dark:text-slate-100 font-extrabold text-xs">
-            {formatCurrency(safeSpent)}
+            {formatCurrency(spent)}
           </span>
         </div>
-
-        <div className="space-y-0.5">
-          <span className="text-slate-400 dark:text-slate-500 font-semibold uppercase tracking-wider block">
-            Remaining
-          </span>
+        <div>
+          <span className="text-slate-400 font-semibold uppercase block">Remaining</span>
           <span className="text-slate-800 dark:text-slate-100 font-extrabold text-xs">
-            {formatCurrency(Math.max(0, safeAllocated - safeSpent))}
+            {formatCurrency(Math.max(0, allocated - spent))}
           </span>
         </div>
       </div>
+
+      {showExpenseButton && onAddExpense && (
+        <button
+          type="button"
+          onClick={onAddExpense}
+          disabled={isPending}
+          className="mt-1 inline-flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold rounded-lg bg-sky-600 hover:bg-sky-700 text-white disabled:opacity-50"
+        >
+          <DollarSign className="w-3.5 h-3.5" />
+          {isPending ? 'Recording…' : 'Record Expense'}
+        </button>
+      )}
     </div>
   );
+}
+
+export default function BudgetStatusBar({ allocated, spent, projectId }: BudgetStatusBarProps) {
+  const { activeCountryId } = useActiveCountry();
+  const queryClient = useQueryClient();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [expenseAmount, setExpenseAmount] = useState('');
+  const [budgetError, setBudgetError] = useState<string | null>(null);
+
+  const { data: stats } = useQuery<ProjectStatsResponse>({
+    queryKey: ['project-stats', projectId, activeCountryId],
+    queryFn: async () => {
+      const res = await api.get(`/projects/${projectId}/stats`);
+      return res.data;
+    },
+    enabled: !!projectId,
+  });
+
+  const { data: project } = useQuery<ProjectResponse>({
+    queryKey: ['project', projectId, activeCountryId],
+    queryFn: async () => {
+      const res = await api.get(`/projects/${projectId}`);
+      return res.data;
+    },
+    enabled: !!projectId,
+  });
+
+  const budgetMutation = useMutation({
+    mutationFn: async (payload: UpdateBudgetRequest) => {
+      const res = await api.patch(`/projects/${projectId}/budget`, payload);
+      return res.data as ProjectResponse;
+    },
+    onSuccess: (updated) => {
+      queryClient.setQueryData(['project', projectId, activeCountryId], updated);
+      queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['project-stats', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      setDialogOpen(false);
+      setExpenseAmount('');
+      setBudgetError(null);
+    },
+    onError: (err: unknown) => {
+      setBudgetError(getApiErrorMessage(err, 'Failed to record expense.'));
+    },
+  });
+
+  if (projectId) {
+    const alloc = Number(project?.budget_allocated) || 0;
+    const spnt = Number(project?.budget_spent) || 0;
+    const pctFromStats = stats?.budget_spent_percent ?? (alloc > 0 ? (spnt / alloc) * 100 : 0);
+
+    if (!project && !stats) {
+      return (
+        <div className="h-16 animate-pulse bg-slate-100 dark:bg-slate-800 rounded-lg" />
+      );
+    }
+
+    return (
+      <>
+        <BudgetBar
+          allocated={alloc}
+          spent={spnt}
+          showExpenseButton
+          onAddExpense={() => setDialogOpen(true)}
+          isPending={budgetMutation.isPending}
+        />
+        {pctFromStats > 90 && (
+          <p className="text-xs text-orange-600 dark:text-orange-400 font-semibold mt-1">
+            Budget alert: over 90% utilized ({Math.round(pctFromStats)}% per server stats).
+          </p>
+        )}
+
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen} title="Record expense">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const amount = parseFloat(expenseAmount);
+              if (!Number.isFinite(amount) || amount <= 0) return;
+              budgetMutation.mutate({ amount_spent: amount });
+            }}
+            className="space-y-4"
+          >
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase">Amount (USD)</label>
+              <input
+                type="number"
+                min="0.01"
+                step="0.01"
+                required
+                value={expenseAmount}
+                onChange={(e) => setExpenseAmount(e.target.value)}
+                className="mt-1 w-full px-3 py-2 border rounded-md dark:bg-slate-800 dark:border-slate-700"
+              />
+            </div>
+            {budgetError && (
+              <p className="text-sm text-red-500 font-medium">{budgetError}</p>
+            )}
+            <button
+              type="submit"
+              disabled={budgetMutation.isPending}
+              className="w-full py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm disabled:opacity-50"
+            >
+              {budgetMutation.isPending ? 'Saving…' : 'Apply to budget'}
+            </button>
+          </form>
+        </Dialog>
+      </>
+    );
+  }
+
+  const safeAllocated = typeof allocated === 'number' && allocated >= 0 ? allocated : 0;
+  const safeSpent = typeof spent === 'number' && spent >= 0 ? spent : 0;
+
+  return <BudgetBar allocated={safeAllocated} spent={safeSpent} />;
 }

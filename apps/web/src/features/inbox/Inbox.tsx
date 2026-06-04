@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { Bell, MessageCircle, X, Send, Circle } from 'lucide-react';
+import { Bell, MessageCircle, Send } from 'lucide-react';
 
 /**
  * Mock notification data structure
@@ -231,19 +231,6 @@ function UnreadNotificationsTab({ notifications }: UnreadNotificationsTabProps) 
     return `${diffDays}d ago`;
   };
 
-  const getNotificationIcon = (type: Notification['type']) => {
-    switch (type) {
-      case 'task_assigned':
-        return <Circle className="w-2 h-2 fill-blue-500 text-blue-500" />;
-      case 'task_completed':
-        return <Circle className="w-2 h-2 fill-emerald-500 text-emerald-500" />;
-      case 'budget_alert':
-        return <Circle className="w-2 h-2 fill-amber-500 text-amber-500" />;
-      default:
-        return <Circle className="w-2 h-2 fill-slate-500 text-slate-500" />;
-    }
-  };
-
   return (
     <div className="space-y-6">
       {/* ============= UNREAD NOTIFICATIONS SECTION ============= */}
@@ -261,7 +248,6 @@ function UnreadNotificationsTab({ notifications }: UnreadNotificationsTabProps) 
               <NotificationCard
                 key={notif.id}
                 notification={notif}
-                icon={getNotificationIcon(notif.type)}
                 relativeTime={formatRelativeTime(notif.timestamp)}
                 isUnread={true}
               />
@@ -282,7 +268,6 @@ function UnreadNotificationsTab({ notifications }: UnreadNotificationsTabProps) 
               <NotificationCard
                 key={notif.id}
                 notification={notif}
-                icon={getNotificationIcon(notif.type)}
                 relativeTime={formatRelativeTime(notif.timestamp)}
                 isUnread={false}
               />
@@ -306,12 +291,11 @@ function UnreadNotificationsTab({ notifications }: UnreadNotificationsTabProps) 
 
 interface NotificationCardProps {
   notification: Notification;
-  icon: React.ReactNode;
   relativeTime: string;
   isUnread: boolean;
 }
 
-function NotificationCard({ notification, icon, relativeTime, isUnread }: NotificationCardProps) {
+function NotificationCard({ notification, relativeTime, isUnread }: NotificationCardProps) {
   return (
     <div
       className={`flex items-start gap-4 p-4 rounded-lg transition-colors ${
