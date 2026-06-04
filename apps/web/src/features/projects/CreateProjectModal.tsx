@@ -29,6 +29,14 @@ const FUNDING_SOURCE_OPTIONS = [
   'Direct Donor',
 ];
 
+const formatDateInputValue = (date: Date): string => date.toISOString().slice(0, 10);
+
+const addDays = (date: Date, days: number): Date => {
+  const nextDate = new Date(date);
+  nextDate.setDate(nextDate.getDate() + days);
+  return nextDate;
+};
+
 export default function CreateProjectModal({
   isOpen,
   onClose,
@@ -68,14 +76,20 @@ export default function CreateProjectModal({
         };
         const phaseRes = await api.post(`/projects/${project.id}/phases`, phasePayload);
         const phaseId = (phaseRes.data as { id: string }).id;
+        let taskStartDate = new Date();
 
         for (const task of phase.tasks) {
+          const estimatedDays = Math.max(1, task.estimated_days);
+          const taskEndDate = addDays(taskStartDate, estimatedDays - 1);
           const taskPayload: CreateTaskRequest = {
             project_id: project.id,
             phase_id: phaseId,
             name: task.name,
+            start_date: formatDateInputValue(taskStartDate),
+            end_date: formatDateInputValue(taskEndDate),
           };
           await api.post('/tasks', taskPayload);
+          taskStartDate = addDays(taskEndDate, 1);
         }
       }
 

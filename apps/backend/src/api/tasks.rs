@@ -16,7 +16,14 @@ pub async fn get_tasks(
     let tasks = sqlx::query_as!(
         TaskResponse,
         r#"
-        SELECT t.id, t.project_id, t.phase_id, t.name, t.status as "status: TaskStatus"
+        SELECT
+            t.id,
+            t.project_id,
+            t.phase_id,
+            t.name,
+            t.status as "status: TaskStatus",
+            t.start_date,
+            t.end_date
         FROM tasks t
         JOIN projects p ON t.project_id = p.id
         WHERE t.project_id = $1 AND p.country_id = $2
@@ -53,16 +60,29 @@ pub async fn create_task(
         return Err((StatusCode::FORBIDDEN, "Access Denied: Project belongs to another tenant".to_string()));
     }
 
+    if payload.end_date < payload.start_date {
+        return Err((StatusCode::BAD_REQUEST, "end_date must be after or equal to start_date".to_string()));
+    }
+
     let task = sqlx::query_as!(
         TaskResponse,
         r#"
-        INSERT INTO tasks (project_id, phase_id, name)
-        VALUES ($1, $2, $3)
-        RETURNING id, project_id, phase_id, name, status as "status: TaskStatus"
+        INSERT INTO tasks (project_id, phase_id, name, start_date, end_date)
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING
+            id,
+            project_id,
+            phase_id,
+            name,
+            status as "status: TaskStatus",
+            start_date,
+            end_date
         "#,
         payload.project_id,
         payload.phase_id,
-        payload.name
+        payload.name,
+        payload.start_date,
+        payload.end_date
     )
     .fetch_one(&pool)
     .await
@@ -114,7 +134,14 @@ pub async fn update_task_status(
         UPDATE tasks 
         SET status = $1, updated_at = CURRENT_TIMESTAMP
         WHERE id = $2
-        RETURNING id, project_id, phase_id, name, status as "status: TaskStatus"
+        RETURNING
+            id,
+            project_id,
+            phase_id,
+            name,
+            status as "status: TaskStatus",
+            start_date,
+            end_date
         "#,
         payload.status as TaskStatus, // <-- payload.status is MOVED here (which is now fine!)
         task_id

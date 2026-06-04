@@ -139,6 +139,7 @@ export default function BudgetStatusBar({ allocated, spent, projectId }: BudgetS
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [expenseAmount, setExpenseAmount] = useState('');
+  const [expenseReason, setExpenseReason] = useState('');
   const [budgetError, setBudgetError] = useState<string | null>(null);
 
   const { data: stats } = useQuery<ProjectStatsResponse>({
@@ -171,12 +172,18 @@ export default function BudgetStatusBar({ allocated, spent, projectId }: BudgetS
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       setDialogOpen(false);
       setExpenseAmount('');
+      setExpenseReason('');
       setBudgetError(null);
     },
     onError: (err: unknown) => {
       setBudgetError(getApiErrorMessage(err, 'Failed to record expense.'));
     },
   });
+
+  const parsedAmount = parseFloat(expenseAmount);
+  const hasValidAmount = Number.isFinite(parsedAmount) && parsedAmount > 0;
+  const hasReason = expenseReason.trim().length > 0;
+  const canApplyBudget = hasValidAmount && hasReason && !budgetMutation.isPending;
 
   if (projectId) {
     const alloc = Number(project?.budget_allocated) || 0;
@@ -204,13 +211,25 @@ export default function BudgetStatusBar({ allocated, spent, projectId }: BudgetS
           </p>
         )}
 
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen} title="Record expense">
+        <Dialog
+          open={dialogOpen}
+          onOpenChange={(open) => {
+            setDialogOpen(open);
+            if (!open) {
+              setExpenseAmount('');
+              setExpenseReason('');
+              setBudgetError(null);
+            }
+          }}
+          title="Record expense"
+        >
           <form
             onSubmit={(e) => {
               e.preventDefault();
               const amount = parseFloat(expenseAmount);
-              if (!Number.isFinite(amount) || amount <= 0) return;
-              budgetMutation.mutate({ amount_spent: amount });
+              const reason = expenseReason.trim();
+              if (!Number.isFinite(amount) || amount <= 0 || !reason) return;
+              budgetMutation.mutate({ amount_spent: amount, reason });
             }}
             className="space-y-4"
           >
@@ -226,13 +245,24 @@ export default function BudgetStatusBar({ allocated, spent, projectId }: BudgetS
                 className="mt-1 w-full px-3 py-2 border rounded-md dark:bg-slate-800 dark:border-slate-700"
               />
             </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase">Reason</label>
+              <input
+                type="text"
+                required
+                value={expenseReason}
+                onChange={(e) => setExpenseReason(e.target.value)}
+                placeholder="e.g. Pump repair, transport costs"
+                className="mt-1 w-full px-3 py-2 border rounded-md dark:bg-slate-800 dark:border-slate-700"
+              />
+            </div>
             {budgetError && (
               <p className="text-sm text-red-500 font-medium">{budgetError}</p>
             )}
             <button
               type="submit"
-              disabled={budgetMutation.isPending}
-              className="w-full py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm disabled:opacity-50"
+              disabled={!canApplyBudget}
+              className="w-full py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {budgetMutation.isPending ? 'Saving…' : 'Apply to budget'}
             </button>

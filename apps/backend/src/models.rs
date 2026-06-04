@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
 use rust_decimal::Decimal;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 
 // --- TASK MODELS ---
 
@@ -26,6 +26,10 @@ pub struct TaskResponse {
     pub phase_id: Option<Uuid>,
     pub name: String,
     pub status: TaskStatus,
+    #[ts(type = "string | null")]
+    pub start_date: Option<NaiveDate>,
+    #[ts(type = "string | null")]
+    pub end_date: Option<NaiveDate>,
 }
 
 // --- PROJECT MODELS ---
@@ -91,6 +95,10 @@ pub struct CreateTaskRequest {
     pub project_id: Uuid,
     pub phase_id: Option<Uuid>, // Nullable! This satisfies the "Uncategorized Bucket" SRS rule.
     pub name: String,
+    #[ts(type = "string")]
+    pub start_date: NaiveDate,
+    #[ts(type = "string")]
+    pub end_date: NaiveDate,
 }
 
 #[derive(Serialize, Deserialize, TS, Debug)]
@@ -215,6 +223,7 @@ pub struct ConfirmUploadRequest {
 pub struct UpdateBudgetRequest {
     #[ts(type = "number")]
     pub amount_spent: Decimal, // The new expense amount to add
+    pub reason: String,
 }
 
 // --- NEW ALERT AND STATISTICS MODELS ---

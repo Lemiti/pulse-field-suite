@@ -92,6 +92,7 @@ fn user_id_for_role(role: &str) -> Uuid {
     match role {
         "ADMIN" => Uuid::parse_str("aaaaaaaa-0000-0000-0000-000000000001").unwrap(),
         "PROJECT_MANAGER" => Uuid::parse_str("aaaaaaaa-0000-0000-0000-000000000002").unwrap(),
+        "FIELD_OFFICER" => Uuid::parse_str("11111111-0000-0000-0000-000000000001").unwrap(),
         "DONOR" => Uuid::parse_str("aaaaaaaa-0000-0000-0000-000000000003").unwrap(),
         _ => Uuid::parse_str("11111111-0000-0000-0000-000000000001").unwrap(),
     }

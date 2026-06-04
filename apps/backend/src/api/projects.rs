@@ -135,6 +135,31 @@ pub async fn update_project_budget(
         return Err((StatusCode::FORBIDDEN, "Access Denied".to_string()));
     }
 
+    let user_id = claims.sub;
+
+    let user_exists = sqlx::query_scalar!(
+        r#"SELECT EXISTS(SELECT 1 FROM users WHERE id = $1) as "exists!: bool""#,
+        user_id
+    )
+    .fetch_one(&pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    if !user_exists {
+        return Err((
+            StatusCode::UNAUTHORIZED,
+            "Authenticated user not found. Please log in again.".to_string(),
+        ));
+    }
+
+    let reason = payload.reason.trim();
+    if reason.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Expense reason is required".to_string(),
+        ));
+    }
+
     // Calculate budget utilization with the incoming expense
     let new_spent = project.budget_spent + payload.amount_spent;
     let allocated_f = project.budget_allocated.to_f64().unwrap_or(1.0);
@@ -166,12 +191,22 @@ pub async fn update_project_budget(
     .fetch_one(&mut *tx).await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     // Write log to persistent audit log history
+    let audit_new_value = serde_json::json!({
+        "budget_spent": updated_project.budget_spent.to_string(),
+        "amount_added": payload.amount_spent.to_string(),
+        "reason": reason,
+    })
+    .to_string();
+
     sqlx::query!(
         r#"
         INSERT INTO audit_logs (project_id, user_id, action, old_value, new_value)
         VALUES ($1, $2, 'ADD_EXPENSE', $3, $4)
         "#,
-        project_id, claims.sub, project.budget_spent.to_string(), updated_project.budget_spent.to_string()
+        project_id,
+        user_id,
+        project.budget_spent.to_string(),
+        audit_new_value
     )
     .execute(&mut *tx).await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
