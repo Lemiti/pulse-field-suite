@@ -39,5 +39,19 @@ export const ProtectedRoute: React.FC = () => {
     }
   }
 
+  // Field Officer RBAC Protection
+  if (claims?.role?.toUpperCase() === "FIELD_OFFICER") {
+    const pathLower = location.pathname.toLowerCase();
+    const searchParams = new URLSearchParams(location.search);
+    const isReports = pathLower === "/reports";
+    const isSettingsWorkspace = pathLower.startsWith("/settings/workspace") || 
+      (pathLower === "/settings" && searchParams.get("tab")?.toLowerCase() === "workspace");
+      
+    if (isReports || isSettingsWorkspace) {
+      alert("Access Denied: Field Officers are not authorized to view Reports or Workspace Settings.");
+      return <Navigate to="/" replace />;
+    }
+  }
+
   return <Outlet />;
 };

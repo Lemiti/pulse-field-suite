@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState } from 'react';
 import type { UserClaims } from '@pulse/shared-types';
 import { getUserClaims } from '../../lib/auth';
+import { api } from '../../lib/api';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface AuthContextType {
   token: string | null;
@@ -17,6 +19,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
   const [claims, setClaims] = useState<UserClaims | null>(getUserClaims());
+  const queryClient = useQueryClient();
 
   const login = (newToken: string) => {
     localStorage.setItem('token', newToken);
@@ -39,6 +42,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('activeCountryId');
+    
+    // Clear Axios headers
+    delete api.defaults.headers.common['Authorization'];
+    
+    // Clear React Query cache
+    queryClient.clear();
+    
     setToken(null);
     setClaims(null);
   };

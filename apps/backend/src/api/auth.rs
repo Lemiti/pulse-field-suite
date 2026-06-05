@@ -56,6 +56,79 @@ where
     }
 }
 
+#[derive(Debug, Clone)]
+#[allow(dead_code)]
+pub struct AdminClaims(pub UserClaims);
+
+#[async_trait]
+impl<S> FromRequestParts<S> for AdminClaims
+where
+    S: Send + Sync,
+{
+    type Rejection = (StatusCode, String);
+
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        let claims = UserClaims::from_request_parts(parts, state)
+            .await
+            .map_err(|(code, msg)| (code, msg.to_string()))?;
+
+        if claims.role.to_uppercase() != "ADMIN" {
+            return Err((StatusCode::FORBIDDEN, "Access Denied: Admin role required".to_string()));
+        }
+
+        Ok(AdminClaims(claims))
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct PmOrAdminClaims(pub UserClaims);
+
+#[async_trait]
+impl<S> FromRequestParts<S> for PmOrAdminClaims
+where
+    S: Send + Sync,
+{
+    type Rejection = (StatusCode, String);
+
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        let claims = UserClaims::from_request_parts(parts, state)
+            .await
+            .map_err(|(code, msg)| (code, msg.to_string()))?;
+
+        let role_upper = claims.role.to_uppercase();
+        if role_upper != "PROJECT_MANAGER" && role_upper != "ADMIN" {
+            return Err((StatusCode::FORBIDDEN, "Access Denied: Project Manager or Admin role required".to_string()));
+        }
+
+        Ok(PmOrAdminClaims(claims))
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct StaffClaims(pub UserClaims);
+
+#[async_trait]
+impl<S> FromRequestParts<S> for StaffClaims
+where
+    S: Send + Sync,
+{
+    type Rejection = (StatusCode, String);
+
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        let claims = UserClaims::from_request_parts(parts, state)
+            .await
+            .map_err(|(code, msg)| (code, msg.to_string()))?;
+
+        let role_upper = claims.role.to_uppercase();
+        if role_upper != "FIELD_OFFICER" && role_upper != "PROJECT_MANAGER" && role_upper != "ADMIN" {
+            return Err((StatusCode::FORBIDDEN, "Access Denied: Authorized personnel only".to_string()));
+        }
+
+        Ok(StaffClaims(claims))
+    }
+}
+
+
 #[derive(Debug, Deserialize)]
 pub struct MockLoginQuery {
     pub role: Option<String>,
@@ -309,3 +382,43 @@ pub async fn change_password(
 
     Ok(Json("Password updated successfully".to_string()))
 }
+
+#[derive(Serialize, TS, Debug)]
+#[ts(export, export_to = "../../../packages/shared-types/src/CurrentUserResponse.ts")]
+pub struct CurrentUserResponse {
+    pub id: Uuid,
+    pub name: String,
+    pub email: String,
+    pub role: String,
+    pub country_id: Uuid,
+    pub country_name: String,
+}
+
+pub async fn get_current_user(
+    State(pool): State<PgPool>,
+    claims: UserClaims,
+) -> Result<Json<CurrentUserResponse>, (StatusCode, String)> {
+    let user = sqlx::query!(
+        r#"
+        SELECT u.id, u.name, u.email, u.role as "role: String", u.country_id, c.name as country_name
+        FROM users u
+        JOIN countries c ON u.country_id = c.id
+        WHERE u.id = $1
+        "#,
+        claims.sub
+    )
+    .fetch_optional(&pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+    .ok_or((StatusCode::NOT_FOUND, "User not found".to_string()))?;
+
+    Ok(Json(CurrentUserResponse {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        country_id: user.country_id,
+        country_name: user.country_name,
+    }))
+}
+

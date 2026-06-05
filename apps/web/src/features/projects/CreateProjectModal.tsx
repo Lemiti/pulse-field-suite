@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useForm, FormProvider, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api';
 import { useActiveCountry } from '../auth/ActiveCountryContext';
@@ -26,22 +26,6 @@ const markerIcon = new L.Icon({
   popupAnchor: [1, -34],
   shadowSize: [41, 41],
 });
-
-// Ethiopian Cascading Region -> Zone -> Woreda Dataset
-const CASCADING_DATA: Record<string, Record<string, string[]>> = {
-  Oromia: {
-    'East Shewa': ["Ada'a", 'Lome'],
-    Arsi: ['Munesa', 'Shirka'],
-  },
-  Amhara: {
-    'North Gondar': ['Debarq', 'Lay Armachiho'],
-    'South Wollo': ['Dessie Zuria', 'Kalu'],
-  },
-  Tigray: {
-    'Eastern Tigray': ['Adigrat Zuria', 'Ganta Afeshum'],
-    'Southern Tigray': ['Alaje', 'Endamehoni'],
-  },
-};
 
 const WOREDA_COORDS: Record<string, [number, number]> = {
   "Ada'a": [8.9, 39.0],
@@ -83,6 +67,7 @@ const wizardSchema = z.object({
   region: z.string().min(1, 'Region is required'),
   zone: z.string().min(1, 'Zone is required'),
   woreda: z.string().min(1, 'Woreda is required'),
+  kebele: z.string().min(1, 'Kebele is required'),
   latitude: z.number().nullable(),
   longitude: z.number().nullable(),
 
@@ -124,6 +109,17 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
   const draftIdRef = useRef<string | null>(null);
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
+  const { data: countryResponse } = useQuery<any>({
+    queryKey: ['country', activeCountryId],
+    queryFn: async () => {
+      if (!activeCountryId) return null;
+      const res = await api.get(`/countries/${activeCountryId}`);
+      return res.data;
+    },
+    enabled: !!activeCountryId && isOpen,
+  });
+  const boundaries = countryResponse?.administrative_boundaries || {};
+
   const methods = useForm<WizardFormValues>({
     resolver: zodResolver(wizardSchema) as any,
     defaultValues: {
@@ -138,6 +134,7 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
       region: '',
       zone: '',
       woreda: '',
+      kebele: '',
       latitude: null,
       longitude: null,
       assumptions: '',
@@ -167,6 +164,7 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
   const endDateValue = watch('end_date');
   const totalIncomeValue = watch('total_income');
   const donorNameValue = watch('donor_name');
+
 
   useEffect(() => {
     if (!nameValue || nameValue.trim().length < 3) return;
@@ -209,33 +207,45 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
   const regionValue = watch('region');
   const zoneValue = watch('zone');
   const woredaValue = watch('woreda');
+  const kebeleValue = watch('kebele');
   const woredaLat = watch('latitude');
   const woredaLng = watch('longitude');
 
   const [mapCenter, setMapCenter] = useState<[number, number]>([9.145, 40.4896]);
 
-  // Reset zone & woreda when region changes
+  // Reset zone, woreda & kebele when region changes
   const prevRegionRef = useRef(regionValue);
   useEffect(() => {
     if (prevRegionRef.current !== regionValue) {
       setValue('zone', '');
       setValue('woreda', '');
+      setValue('kebele', '');
       setValue('latitude', null);
       setValue('longitude', null);
       prevRegionRef.current = regionValue;
     }
   }, [regionValue, setValue]);
 
-  // Reset woreda when zone changes
+  // Reset woreda & kebele when zone changes
   const prevZoneRef = useRef(zoneValue);
   useEffect(() => {
     if (prevZoneRef.current !== zoneValue) {
       setValue('woreda', '');
+      setValue('kebele', '');
       setValue('latitude', null);
       setValue('longitude', null);
       prevZoneRef.current = zoneValue;
     }
   }, [zoneValue, setValue]);
+
+  // Reset kebele when woreda changes
+  const prevWoredaRef = useRef(woredaValue);
+  useEffect(() => {
+    if (prevWoredaRef.current !== woredaValue) {
+      setValue('kebele', '');
+      prevWoredaRef.current = woredaValue;
+    }
+  }, [woredaValue, setValue]);
 
   // Auto-center coordinates when woreda is picked
   useEffect(() => {
@@ -265,6 +275,7 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
           region: values.region,
           zone: values.zone,
           woreda: values.woreda,
+          kebele: values.kebele,
           coordinates: { lat: values.latitude, lng: values.longitude },
         },
         start_date: values.start_date,
@@ -304,7 +315,7 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
     if (step === 1) {
       fieldsToValidate = ['name', 'start_date', 'end_date', 'total_income', 'donor_name', 'budget_allocated'];
     } else if (step === 2) {
-      fieldsToValidate = ['sector_type', 'region', 'zone', 'woreda'];
+      fieldsToValidate = ['sector_type', 'region', 'zone', 'woreda', 'kebele'];
       if (woredaLat === null || woredaLng === null) {
         alert('Please drop a marker pin on the map');
         return;
@@ -321,6 +332,7 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
       setStep((s) => s - 1);
     }
   };
+
 
   if (!isOpen) return null;
 
@@ -476,7 +488,7 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
                       </label>
                       <select
                         {...methods.register('donor_name')}
-                        className={`w-full border rounded-xl px-4 py-3 text-slate-900 dark:text-white dark:bg-slate-800 dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all ${
+                        className={`w-full border rounded-xl overflow-hidden px-4 py-3 text-slate-900 dark:text-white dark:bg-slate-800 dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all ${
                           errors.donor_name ? 'border-red-500' : 'border-slate-350'
                         }`}
                       >
@@ -555,17 +567,17 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
                   </div>
 
                   {/* CASCADING REGION SELECTORS */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                     <div>
                       <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 font-sans">
                         Region *
                       </label>
                       <select
                         {...methods.register('region')}
-                        className="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                        className="w-full border border-slate-300 dark:border-slate-700 rounded-xl overflow-hidden px-4 py-3 text-slate-900 dark:text-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                       >
                         <option value="">Select Region...</option>
-                        {Object.keys(CASCADING_DATA).map((r) => (
+                        {Object.keys(boundaries).map((r) => (
                           <option key={r} value={r}>
                             {r}
                           </option>
@@ -583,12 +595,12 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
                       <select
                         {...methods.register('zone')}
                         disabled={!regionValue}
-                        className="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 disabled:opacity-50"
+                        className="w-full border border-slate-300 dark:border-slate-700 rounded-xl overflow-hidden px-4 py-3 text-slate-900 dark:text-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 disabled:opacity-50"
                       >
                         <option value="">Select Zone...</option>
                         {regionValue &&
-                          CASCADING_DATA[regionValue] &&
-                          Object.keys(CASCADING_DATA[regionValue]).map((z) => (
+                          boundaries[regionValue] &&
+                          Object.keys(boundaries[regionValue]).map((z) => (
                             <option key={z} value={z}>
                               {z}
                             </option>
@@ -606,13 +618,13 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
                       <select
                         {...methods.register('woreda')}
                         disabled={!zoneValue}
-                        className="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 disabled:opacity-50"
+                        className="w-full border border-slate-300 dark:border-slate-700 rounded-xl overflow-hidden px-4 py-3 text-slate-900 dark:text-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 disabled:opacity-50"
                       >
                         <option value="">Select Woreda...</option>
                         {regionValue &&
                           zoneValue &&
-                          CASCADING_DATA[regionValue]?.[zoneValue] &&
-                          CASCADING_DATA[regionValue][zoneValue].map((w) => (
+                          boundaries[regionValue]?.[zoneValue] &&
+                          Object.keys(boundaries[regionValue][zoneValue]).map((w) => (
                             <option key={w} value={w}>
                               {w}
                             </option>
@@ -622,7 +634,33 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
                         <p className="text-red-500 text-xs mt-1 font-bold">{errors.woreda.message}</p>
                       )}
                     </div>
+
+                    <div>
+                      <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 font-sans">
+                        Kebele *
+                      </label>
+                      <select
+                        {...methods.register('kebele')}
+                        disabled={!woredaValue}
+                        className="w-full border border-slate-300 dark:border-slate-700 rounded-xl overflow-hidden px-4 py-3 text-slate-900 dark:text-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 disabled:opacity-50"
+                      >
+                        <option value="">Select Kebele...</option>
+                        {regionValue &&
+                          zoneValue &&
+                          woredaValue &&
+                          boundaries[regionValue]?.[zoneValue]?.[woredaValue] &&
+                          boundaries[regionValue][zoneValue][woredaValue].map((k: string) => (
+                            <option key={k} value={k}>
+                              {k}
+                            </option>
+                          ))}
+                      </select>
+                      {errors.kebele && (
+                        <p className="text-red-500 text-xs mt-1 font-bold">{errors.kebele.message}</p>
+                      )}
+                    </div>
                   </div>
+
 
                   {/* INTERACTIVE LEAFLET MAP CONTAINER */}
                   <div className="space-y-2">

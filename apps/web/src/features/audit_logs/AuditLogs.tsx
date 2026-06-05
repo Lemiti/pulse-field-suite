@@ -19,6 +19,33 @@ const formatActionName = (action: string): string => {
   return actionEventMap[action] || action;
 };
 
+function formatDeltaValue(value: string | null | undefined): string {
+  if (!value) return 'N/A';
+  const trimmed = value.trim();
+  if (trimmed === 'N/A' || trimmed === '') return 'N/A';
+  
+  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (parsed && typeof parsed === 'object') {
+        const amount = parsed.amount_added;
+        const reason = parsed.reason;
+        if (amount !== undefined || reason !== undefined) {
+          return `Logged Expense: $${amount ?? '0'} (Reason: ${reason ?? 'N/A'})`;
+        }
+        
+        // General JSON formatting
+        return Object.entries(parsed)
+          .map(([key, val]) => `${key.replace(/_/g, ' ')}: ${val}`)
+          .join(', ');
+      }
+    } catch {
+      // Fallback
+    }
+  }
+  return value;
+}
+
 /**
  * AuditLogs Component
  *
@@ -115,7 +142,7 @@ export default function AuditLogs() {
             <select
               value={selectedProjectId || ''}
               onChange={(e) => setSelectedProjectId(e.target.value || null)}
-              className="w-full h-12 px-4 py-3 rounded-lg border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all appearance-none cursor-pointer"
+              className="w-full h-12 px-4 py-3 rounded-lg overflow-hidden border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all appearance-none cursor-pointer"
             >
               <option value="">-- Choose a project --</option>
               {projects.map((project) => (
@@ -293,12 +320,12 @@ function AllLogsTab({ logs, isLoading, projectName }: AllLogsTabProps) {
                 {/* Change Delta */}
                 <td className="px-4 py-4">
                   <div className="flex items-center gap-2 text-sm">
-                    <span className="px-3 py-1 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white font-medium line-clamp-2 max-w-[200px]" title={log.old_value || 'N/A'}>
-                      {log.old_value || 'N/A'}
+                    <span className="px-3 py-1 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white font-medium line-clamp-2 max-w-[300px]" title={formatDeltaValue(log.old_value)}>
+                      {formatDeltaValue(log.old_value)}
                     </span>
                     <span className="text-slate-400 dark:text-slate-500 font-bold">→</span>
-                    <span className="px-3 py-1 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-900 dark:text-blue-200 font-medium line-clamp-2 max-w-[200px]" title={log.new_value || 'N/A'}>
-                      {log.new_value || 'N/A'}
+                    <span className="px-3 py-1 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-900 dark:text-blue-200 font-medium line-clamp-2 max-w-[300px]" title={formatDeltaValue(log.new_value)}>
+                      {formatDeltaValue(log.new_value)}
                     </span>
                   </div>
                 </td>
@@ -394,7 +421,7 @@ function SystemAlertsTab({ logs, isLoading, projectName }: SystemAlertsTabProps)
                 </h3>
               </div>
               <p className="text-sm mt-1 opacity-90 break-words font-mono text-xs">
-                {log.old_value} → {log.new_value}
+                {formatDeltaValue(log.old_value)} → {formatDeltaValue(log.new_value)}
               </p>
               <p className="text-xs mt-2 opacity-75 font-semibold">
                 By {log.user_name} • {new Date(log.created_at || '').toLocaleString()}

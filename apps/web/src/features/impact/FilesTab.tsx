@@ -147,7 +147,7 @@ export default function FilesTab({ projectId }: FilesTabProps) {
           <select
             value={taskId}
             onChange={(e) => setSelectedTaskId(e.target.value)}
-            className="mt-1 w-full px-3 py-2 text-sm rounded-lg border dark:bg-slate-900 dark:border-slate-700 bg-white border-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-500/50 font-sans"
+            className="mt-1 w-full px-3 py-2 text-sm rounded-lg overflow-hidden border dark:bg-slate-900 dark:border-slate-700 bg-white border-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-500/50 font-sans"
           >
             {tasks.map((t) => (
               <option key={t.id} value={t.id}>

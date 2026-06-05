@@ -1,7 +1,9 @@
 import { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Lock, User, Building2, ToggleRight, Database, Cloud } from 'lucide-react';
+import { Lock, User, Building2, ToggleRight, Database, Cloud, RefreshCw, AlertCircle, Check, Play, Terminal, Eye, EyeOff } from 'lucide-react';
 import { api } from '../../lib/api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { WebhookDeliveryQueueItem } from '@pulse/shared-types';
 
 /**
  * JWT Payload structure (decoded from token)
@@ -109,9 +111,10 @@ export default function Settings() {
       {activeTab === 'Profile' && <ProfileTab user={decodedUser} />}
       {activeTab === 'Security' && <SecurityTab />}
       {activeTab === 'Workspace' && <WorkspaceTab />}
+      {activeTab === 'Developer' && <DeveloperTab />}
 
       {/* Fallback for unknown tabs */}
-      {activeTab !== 'Profile' && activeTab !== 'Security' && activeTab !== 'Workspace' && (
+      {activeTab !== 'Profile' && activeTab !== 'Security' && activeTab !== 'Workspace' && activeTab !== 'Developer' && (
         <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-8 text-center">
           <p className="text-slate-600 dark:text-slate-300">
             Content for tab "{activeTab}" not yet available.
@@ -146,11 +149,21 @@ function ProfileTab({ user }: ProfileTabProps) {
     );
   }
 
-  // Extract user information from JWT payload
+  const { data: meData, isLoading } = useQuery({
+    queryKey: ['users-me'],
+    queryFn: async () => {
+      const res = await api.get('/users/me');
+      return res.data;
+    },
+  });
+
+  // Extract user information from JWT payload / fetched profile data
   const userId = user.sub || 'Unknown';
   const countryId = user.country_id || 'Unknown';
-  const email = user.email || 'N/A';
-  const role = user.role || 'USER';
+  const email = meData?.email || user.email || 'N/A';
+  const role = meData?.role || user.role || 'USER';
+  const name = meData?.name || 'User';
+  const countryName = meData?.country_name || 'N/A';
   const issuedAt = user.iat ? new Date(user.iat * 1000).toLocaleDateString() : 'Unknown';
   const expiresAt = user.exp ? new Date(user.exp * 1000).toLocaleDateString() : 'Unknown';
 
@@ -192,6 +205,20 @@ function ProfileTab({ user }: ProfileTabProps) {
 
   const roleBadge = getRoleBadgeStyle(role);
 
+  if (isLoading) {
+    return (
+      <div className="space-y-6 animate-pulse">
+        <div className="h-32 bg-slate-100 dark:bg-slate-800 rounded-lg" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="h-28 bg-slate-100 dark:bg-slate-800 rounded-lg" />
+          <div className="h-28 bg-slate-100 dark:bg-slate-800 rounded-lg" />
+          <div className="h-28 bg-slate-100 dark:bg-slate-800 rounded-lg" />
+          <div className="h-28 bg-slate-100 dark:bg-slate-800 rounded-lg" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* ============= USER IDENTITY CARD ============= */}
@@ -202,7 +229,7 @@ function ProfileTab({ user }: ProfileTabProps) {
           </div>
           <div className="flex-1">
             <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white">
-              Welcome back!
+              Welcome back, {name}!
             </h2>
             <p className="text-slate-600 dark:text-slate-300 mt-1">
               Your active session and role authorization
@@ -213,16 +240,16 @@ function ProfileTab({ user }: ProfileTabProps) {
 
       {/* ============= INFO CARDS GRID ============= */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* User ID Card */}
+        {/* Full Name Card */}
         <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6 space-y-2 min-h-[120px]">
           <p className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
-            User ID
+            Full Name
           </p>
-          <p className="text-slate-900 dark:text-white font-mono font-semibold break-all">
-            {userId.substring(0, 16)}...
+          <p className="text-slate-900 dark:text-white font-semibold text-lg">
+            {name}
           </p>
-          <p className="text-xs text-slate-500 dark:text-slate-500">
-            Full UUID: <span className="font-mono text-[10px]">{userId}</span>
+          <p className="text-xs text-slate-500 dark:text-slate-550">
+            Registered user display name
           </p>
         </div>
 
@@ -234,7 +261,7 @@ function ProfileTab({ user }: ProfileTabProps) {
           <p className="text-slate-900 dark:text-white font-medium break-all">
             {email}
           </p>
-          <p className="text-xs text-slate-500 dark:text-slate-500">
+          <p className="text-xs text-slate-500 dark:text-slate-550">
             Contact for notifications and support
           </p>
         </div>
@@ -248,7 +275,7 @@ function ProfileTab({ user }: ProfileTabProps) {
             <Lock className="w-4 h-4" />
             {roleBadge.label}
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-500">
+          <p className="text-xs text-slate-500 dark:text-slate-550">
             Your assigned role within the NGO
           </p>
         </div>
@@ -259,10 +286,10 @@ function ProfileTab({ user }: ProfileTabProps) {
             Assigned Tenant (Country)
           </p>
           <p className="text-slate-900 dark:text-white font-medium">
-            {countryId === 'Unknown' ? countryId : `Country ID: ${countryId}`}
+            {countryName}
           </p>
-          <p className="text-xs text-slate-500 dark:text-slate-500">
-            All projects scoped to this tenant context
+          <p className="text-xs text-slate-500 dark:text-slate-550">
+            Scoped Context: <span className="font-mono text-[10px]">{countryId}</span>
           </p>
         </div>
       </div>
@@ -621,6 +648,193 @@ function WorkspaceTab() {
         <button className="w-full px-4 py-3 rounded-lg border-2 border-red-600 dark:border-red-500 text-red-700 dark:text-red-300 font-bold hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors min-h-[48px] text-sm">
           Clear All Local Cache and Resync
         </button>
+      </div>
+    </div>
+  );
+}
+
+// ============= DEVELOPER TAB =============
+function DeveloperTab() {
+  const queryClient = useQueryClient();
+  const [expandedWebhookId, setExpandedWebhookId] = useState<string | null>(null);
+
+  // Fetch webhooks using useQuery
+  const { data: webhooks = [], isLoading, error, refetch } = useQuery<WebhookDeliveryQueueItem[]>({
+    queryKey: ['developer-webhooks'],
+    queryFn: async () => {
+      const res = await api.get<WebhookDeliveryQueueItem[]>('/developer/webhooks');
+      return res.data;
+    },
+    refetchInterval: 5000, // Poll every 5 seconds for live status updates!
+  });
+
+  // Mutation to retry a webhook
+  const retryMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await api.post(`/developer/webhooks/${id}/retry`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['developer-webhooks'] });
+    },
+  });
+
+  const getStatusBadge = (status: string) => {
+    switch (status.toUpperCase()) {
+      case 'SUCCESS':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+            <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            Success
+          </span>
+        );
+      case 'PENDING':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+            <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-600 dark:text-amber-400" />
+            Pending
+          </span>
+        );
+      case 'FAILED':
+      default:
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-800">
+            <AlertCircle className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+            Failed
+          </span>
+        );
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Tab Header Card */}
+      <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white rounded-xl p-8 border border-slate-700 space-y-6 shadow-xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-8 opacity-10">
+          <Terminal className="w-48 h-48" />
+        </div>
+        <div className="flex items-center gap-4 relative z-10">
+          <div className="w-16 h-16 rounded-full bg-blue-600/30 flex items-center justify-center border border-blue-500/50">
+            <Database className="w-8 h-8 text-blue-400" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-extrabold tracking-tight">Developer Settings</h2>
+            <p className="text-slate-400 text-sm mt-1">
+              Admin panel for monitoring webhook dispatches, processing state, and manual queue management.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Webhooks Queue Card */}
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+        <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-950/50">
+          <div>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Outbound Webhook Delivery Queue</h3>
+            <p className="text-xs text-slate-500 mt-1">Shows all webhooks, retry attempts, and status. Automatically refreshes.</p>
+          </div>
+          <button
+            onClick={() => refetch()}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            Refresh
+          </button>
+        </div>
+
+        {isLoading ? (
+          <div className="p-12 text-center text-slate-500">
+            <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-500" />
+            Loading webhook queue...
+          </div>
+        ) : error ? (
+          <div className="p-12 text-center text-rose-500">
+            Failed to load webhooks: {(error as any).message || 'Unknown error'}
+          </div>
+        ) : webhooks.length === 0 ? (
+          <div className="p-12 text-center text-slate-500 dark:text-slate-400">
+            No webhooks recorded in the delivery queue.
+          </div>
+        ) : (
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
+            {webhooks.map((item) => {
+              const eventType = item.payload?.event_type || 'unknown.event';
+              const isExpanded = expandedWebhookId === item.id;
+              
+              return (
+                <div key={item.id} className="p-6 hover:bg-slate-50/50 dark:hover:bg-slate-950/20 transition-colors">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    {/* Status & Event Header */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3">
+                        {getStatusBadge(item.status)}
+                        <span className="font-mono text-sm font-bold text-slate-800 dark:text-slate-200">
+                          {eventType}
+                        </span>
+                      </div>
+                      <div className="text-xs text-slate-500 space-y-1">
+                        <div>
+                          <span className="font-semibold text-slate-600 dark:text-slate-400">ID:</span>{' '}
+                          <span className="font-mono">{item.id}</span>
+                        </div>
+                        <div className="flex gap-4 flex-wrap">
+                          <span>
+                            <strong>Attempts:</strong> {item.retry_count} / 5
+                          </span>
+                          {item.created_at && (
+                            <span>
+                              <strong>Created:</strong> {new Date(item.created_at).toLocaleString()}
+                            </span>
+                          )}
+                          {item.next_attempt_at && item.status === 'PENDING' && (
+                            <span>
+                              <strong>Next Attempt:</strong> {new Date(item.next_attempt_at).toLocaleString()}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => setExpandedWebhookId(isExpanded ? null : item.id)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                      >
+                        {isExpanded ? (
+                          <>
+                            <EyeOff className="w-3.5 h-3.5" />
+                            Hide Payload
+                          </>
+                        ) : (
+                          <>
+                            <Eye className="w-3.5 h-3.5" />
+                            View Payload
+                          </>
+                        )}
+                      </button>
+
+                      <button
+                        onClick={() => retryMutation.mutate(item.id)}
+                        disabled={retryMutation.isPending}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold transition-all shadow-sm"
+                      >
+                        <Play className="w-3.5 h-3.5" />
+                        Retry
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Expanded Payload Viewer */}
+                  {isExpanded && (
+                    <div className="mt-4 p-4 rounded-lg bg-slate-900 border border-slate-800 font-mono text-xs text-emerald-400 overflow-x-auto">
+                      <pre>{JSON.stringify(item.payload, null, 2)}</pre>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

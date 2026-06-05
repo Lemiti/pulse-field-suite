@@ -178,7 +178,7 @@ export default function NotesTab({ projectId }: NotesTabProps) {
               spellCheck="true"
               rows={4}
               placeholder="Document field observations…"
-              className={`mt-1 w-full px-3 py-2 border rounded-md bg-slate-900 border-slate-700 text-slate-100 ${
+              className={`mt-1 w-full px-3 py-2 border rounded-md bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 ${
                 createMethods.formState.errors.content ? 'border-red-500' : ''
               }`}
               {...createMethods.register('content')}

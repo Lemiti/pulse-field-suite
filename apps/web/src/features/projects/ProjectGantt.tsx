@@ -598,7 +598,7 @@ export default function ProjectGantt({
                   value={selectedTask.status}
                   disabled={isUpdating || readOnly}
                   onChange={(e) => handleDialogStatusChange(e.target.value as TaskStatus)}
-                  className="w-full h-11 px-4 py-2 text-sm font-semibold text-slate-800 dark:text-white rounded-lg border-2 border-slate-250 dark:border-slate-700 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all cursor-pointer select-none"
+                  className="w-full h-11 px-4 py-2 text-sm font-semibold text-slate-800 dark:text-white rounded-lg overflow-hidden border-2 border-slate-250 dark:border-slate-700 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all cursor-pointer select-none"
                 >
                   {Object.keys(STATUS_CONFIG).map((status) => (
                     <option key={status} value={status}>

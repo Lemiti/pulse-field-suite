@@ -177,7 +177,7 @@ export const LoginPage: React.FC = () => {
                     value={role}
                     onChange={(e) => setRole(e.target.value)}
                     disabled={loading}
-                    className="w-full pl-10 pr-3 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none appearance-none cursor-pointer"
+                    className="w-full pl-10 pr-3 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm rounded-xl overflow-hidden focus:ring-2 focus:ring-blue-500 focus:outline-none appearance-none cursor-pointer"
                   >
                     {roles.map((r) => (
                       <option key={r.id} value={r.id}>
@@ -198,7 +198,7 @@ export const LoginPage: React.FC = () => {
                     value={countryId}
                     onChange={(e) => setCountryId(e.target.value)}
                     disabled={loading}
-                    className="w-full pl-10 pr-3 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none appearance-none cursor-pointer"
+                    className="w-full pl-10 pr-3 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm rounded-xl overflow-hidden focus:ring-2 focus:ring-blue-500 focus:outline-none appearance-none cursor-pointer"
                   >
                     {TENANT_COUNTRIES.map((c) => (
                       <option key={c.id} value={c.id}>

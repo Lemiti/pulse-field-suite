@@ -14,13 +14,13 @@ interface MessagesTabProps {
   projectId: string;
 }
 
-function senderMeta(senderId: string, currentUserId: string | null) {
+function senderMeta(senderId: string, senderName: string | null | undefined, currentUserId: string | null) {
   const claims = getUserClaims();
   if (currentUserId && senderId === currentUserId) {
     return { name: 'You', role: claims?.role ?? 'Member', isSelf: true };
   }
   return {
-    name: `Member ${senderId.slice(0, 8)}`,
+    name: senderName || `Member ${senderId.slice(0, 8)}`,
     role: 'TEAM',
     isSelf: false,
   };
@@ -60,6 +60,7 @@ export default function MessagesTab({ projectId }: MessagesTabProps) {
         sender_id: currentUserId ?? 'pending',
         content: payload.content,
         created_at: new Date().toISOString(),
+        sender_name: 'You',
       };
       queryClient.setQueryData(queryKey, [...previous, optimistic]);
       return { previous, draftSnapshot: payload.content };
@@ -85,8 +86,14 @@ export default function MessagesTab({ projectId }: MessagesTabProps) {
   });
 
   const sorted = [...messages].sort(
-    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    (a, b) => new Date(a.created_at || '').getTime() - new Date(b.created_at || '').getTime()
   );
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
 
   return (
     <div className="flex flex-col h-[calc(100vh-280px)] min-h-[400px] max-w-3xl border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-900">
@@ -95,7 +102,7 @@ export default function MessagesTab({ projectId }: MessagesTabProps) {
           <p className="text-sm text-slate-500 text-center py-8">No messages yet. Start the conversation.</p>
         ) : (
           sorted.map((msg) => {
-            const { name, role, isSelf } = senderMeta(msg.sender_id, currentUserId);
+            const { name, role, isSelf } = senderMeta(msg.sender_id, msg.sender_name, currentUserId);
             const time = new Date(msg.created_at).toLocaleTimeString(undefined, {
               hour: '2-digit',
               minute: '2-digit',

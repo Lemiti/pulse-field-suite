@@ -3,7 +3,7 @@ mod api;
 mod models;
 
 use axum::{
-    routing::{get, post, patch, delete},
+    routing::{get, post, patch, delete, put},
     Router,
 };
 use sqlx::postgres::PgPoolOptions;
@@ -15,8 +15,6 @@ use crate::api::projects::{
     // Phase 2: Notes & Messages Handlers
     get_project_notes, create_project_note, update_project_note,
     get_project_messages, create_project_message,
-    // Phase 3: Impact Analytics Handlers
-    get_project_impact_metrics, update_project_impact_metric,
     get_project_phases, create_project_phase,
 };
 
@@ -74,6 +72,22 @@ async fn main() {
         api::auth::LoginRequest::export().unwrap();
         api::auth::ChangePasswordRequest::export().unwrap();
         api::auth::LoginResponse::export().unwrap();
+        api::auth::CurrentUserResponse::export().unwrap();
+        api::tasks::UpdateTaskPhaseRequest::export().unwrap();
+        models::GlobalMetrics::export().unwrap();
+        models::ActionItem::export().unwrap();
+        models::ActivityFeedEntry::export().unwrap();
+        models::DashboardSummary::export().unwrap();
+        models::AssignImpactMetricRequest::export().unwrap();
+        models::CreateMetricTemplateRequest::export().unwrap();
+        models::UpdateMetricTemplateRequest::export().unwrap();
+
+        api::partners::CreatePartnerRequest::export().unwrap();
+        api::partners::UpdatePartnerRequest::export().unwrap();
+        api::partners::ProjectPartnerResponse::export().unwrap();
+        api::partners::ProjectPartnerInput::export().unwrap();
+        api::partners::UpdateProjectPartnersRequest::export().unwrap();
+        models::CountryResponse::export().unwrap();
 
 
 
@@ -123,7 +137,21 @@ export * from './SignupRequest';
 export * from './LoginRequest';
 export * from './ChangePasswordRequest';
 export * from './LoginResponse';
-
+export * from './CurrentUserResponse';
+export * from './UpdateTaskPhaseRequest';
+export * from './GlobalMetrics';
+export * from './ActionItem';
+export * from './ActivityFeedEntry';
+export * from './DashboardSummary';
+export * from './AssignImpactMetricRequest';
+export * from './CreateMetricTemplateRequest';
+export * from './UpdateMetricTemplateRequest';
+export * from './CreatePartnerRequest';
+export * from './UpdatePartnerRequest';
+export * from './ProjectPartnerResponse';
+export * from './ProjectPartnerInput';
+export * from './UpdateProjectPartnersRequest';
+export * from './CountryResponse';
 "#;
         std::fs::write("../../packages/shared-types/src/index.ts", index_content.trim())
             .expect("Failed to write index.ts");
@@ -141,6 +169,12 @@ export * from './LoginResponse';
 
     tracing::info!("✅ Connected to Database");
 
+    // Spawn the Webhook background worker
+    let worker_pool = pool.clone();
+    tokio::spawn(async move {
+        api::webhook_worker::run_webhook_worker(worker_pool).await;
+    });
+
     // 3. Build Axum Router
     let app = Router::new()
         .route("/api/health", get(|| async { "Pulse-Field API is online!" }))
@@ -148,7 +182,9 @@ export * from './LoginResponse';
         .route("/api/auth/signup", post(api::auth::signup))
         .route("/api/auth/login", post(api::auth::login))
         .route("/api/auth/change-password", post(api::auth::change_password))
+        .route("/api/users/me", get(api::auth::get_current_user))
         // 🚀 NEW SECURE ROUTES:
+        .route("/api/dashboard/summary", get(api::dashboard::get_dashboard_summary))
         .route("/api/projects", get(api::projects::get_projects))
         .route("/api/projects", post(api::projects::create_project))
         .route("/api/projects/:project_id", get(api::projects::get_project).put(api::projects::update_project))
@@ -159,7 +195,10 @@ export * from './LoginResponse';
 	    .route("/api/projects/:project_id/audit-logs", get(api::audit_logs::get_audit_logs))
         .route("/api/reports/summary", get(api::reports::get_report_summary))
         .route("/api/tasks/:task_id/status", patch(api::tasks::update_task_status))
+        .route("/api/tasks/:task_id/phase", patch(api::tasks::update_task_phase))
 	    .route("/api/ai/suggest-phases", post(api::ai::suggest_phases))
+	    .route("/api/developer/webhooks", get(api::webhook_worker::get_webhooks))
+	    .route("/api/developer/webhooks/:id/retry", post(api::webhook_worker::retry_webhook))
 	    .route("/api/sync", post(api::sync::push_sync))
         .route("/api/media/upload-url", post(api::media::get_upload_url))
         .route("/api/media/confirm", post(api::media::confirm_upload))
@@ -176,11 +215,26 @@ export * from './LoginResponse';
         .route("/api/projects/:project_id/messages", get(api::projects::get_project_messages).post(api::projects::create_project_message))
 
         // ─── NEW PHASE 3 ENDPOINTS (IMPACT METRICS) ────────────────────────────
-        .route("/api/projects/:project_id/impact", get(api::projects::get_project_impact_metrics))
-        .route("/api/projects/:project_id/impact/:metric_id", patch(api::projects::update_project_impact_metric))
+        .route("/api/projects/:project_id/impact", get(api::metrics::get_project_impact_metrics).post(api::metrics::assign_project_impact_metric))
+        .route("/api/projects/:project_id/impact/:metric_id", patch(api::metrics::update_project_impact_metric))
 
+        // Admin Global Metric Templates
+        .route("/api/admin/metric-templates", get(api::metrics::get_metric_templates).post(api::metrics::create_metric_template))
+        .route("/api/admin/metric-templates/:template_id", put(api::metrics::update_metric_template).delete(api::metrics::delete_metric_template))
+
+        // Partners CRUD & Project Partners endpoints
+        .route("/api/partners", get(api::partners::get_partners).post(api::partners::create_partner))
+        .route("/api/partners/:partner_id", put(api::partners::update_partner).delete(api::partners::delete_partner))
+        .route("/api/projects/:project_id/partners", get(api::partners::get_project_partners).post(api::partners::update_project_partners))
+
+        // Country endpoints
+        .route("/api/countries/:country_id", get(api::countries::get_country))
+
+
+        .layer(axum::middleware::from_fn(error_json_middleware))
         .layer(axum::middleware::from_fn(cors_middleware))
         .with_state(pool);
+
 
 
     // 4. Start Server
@@ -225,3 +279,77 @@ async fn cors_middleware(
     );
     response
 }
+
+async fn error_json_middleware(
+    request: Request<axum::body::Body>,
+    next: Next,
+) -> axum::response::Response {
+    let response = next.run(request).await;
+    let status = response.status();
+
+    if status.is_client_error() || status.is_server_error() {
+        let (parts, body) = response.into_parts();
+        
+        let bytes = match axum::body::to_bytes(body, usize::MAX).await {
+            Ok(b) => b,
+            Err(_) => {
+                return (
+                    status,
+                    [("content-type", "application/json")],
+                    r#"{"error":"Internal Server Error"}"#,
+                )
+                    .into_response();
+            }
+        };
+
+        let is_json = parts.headers.get(axum::http::header::CONTENT_TYPE)
+            .and_then(|val| val.to_str().ok())
+            .map(|s| s.contains("application/json"))
+            .unwrap_or(false);
+
+        if is_json {
+            return axum::response::Response::from_parts(parts, axum::body::Body::from(bytes));
+        }
+
+        let error_msg = String::from_utf8_lossy(&bytes).into_owned();
+        let readable_msg = map_to_readable_error(&error_msg);
+
+        let json_body = serde_json::json!({ "error": readable_msg });
+        let json_str = serde_json::to_string(&json_body).unwrap_or_else(|_| r#"{"error":"Internal Server Error"}"#.to_string());
+
+        (
+            status,
+            [("content-type", "application/json")],
+            json_str,
+        )
+            .into_response()
+    } else {
+        response
+    }
+}
+
+fn map_to_readable_error(msg: &str) -> String {
+    let msg_lower = msg.to_lowercase();
+    if msg_lower.contains("duplicate key value violates unique constraint") {
+        "This record already exists.".to_string()
+    } else if msg_lower.contains("violates foreign key constraint") {
+        "The referenced record could not be found.".to_string()
+    } else if msg_lower.contains("violates not-null constraint") {
+        "A required field is missing.".to_string()
+    } else if msg_lower.contains("invalid input syntax for type uuid") {
+        "Invalid ID format.".to_string()
+    } else if msg_lower.contains("numeric field overflow") {
+        "Number exceeds the maximum allowed value.".to_string()
+    } else if msg_lower.contains("budget allocation exceeds") || msg_lower.contains("budget warning") {
+        msg.to_string()
+    } else if msg_lower.contains("access denied") || msg_lower.contains("unauthorized") {
+        msg.to_string()
+    } else {
+        if msg_lower.contains("database error") || msg_lower.contains("sqlx") {
+            "A database error occurred. Please verify your inputs and try again.".to_string()
+        } else {
+            msg.to_string()
+        }
+    }
+}
+

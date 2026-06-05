@@ -3,7 +3,7 @@ use sqlx::{PgPool, Postgres, Transaction};
 use rust_decimal::prelude::ToPrimitive;
 use uuid::Uuid;
 use crate::models::UpdateBudgetRequest;
-use crate::api::auth::UserClaims;
+use crate::api::auth::{UserClaims, PmOrAdminClaims, StaffClaims};
 use crate::models::{CreateProjectRequest, ProjectResponse, ProjectStatus, ProjectFocusArea, PhaseResponse, CreatePhaseRequest};
 use crate::models::{
     FieldLogResponse, CreateFieldLogRequest, UpdateFieldLogRequest,
@@ -190,10 +190,10 @@ pub async fn get_project(
 // POST /api/projects
 pub async fn create_project(
     State(pool): State<PgPool>,
-    claims: UserClaims, // 🛡️ AUTH GUARD
+    pm_claims: PmOrAdminClaims, // 🛡️ AUTH GUARD: PM or Admin only
     Json(payload): Json<CreateProjectRequest>,
 ) -> Result<Json<ProjectResponse>, (StatusCode, String)> {
-    
+    let claims = pm_claims.0;
     let budget_allocated = payload.budget_allocated.unwrap_or(rust_decimal::Decimal::from(0));
     let funding_sources = payload.funding_sources.unwrap_or_default();
     let funding_json = serde_json::to_value(&funding_sources).unwrap_or(serde_json::json!([]));
@@ -259,11 +259,11 @@ pub async fn create_project(
 // PATCH /api/projects/:project_id/budget
 pub async fn update_project_budget(
     State(pool): State<PgPool>,
-    claims: UserClaims,
+    pm_claims: PmOrAdminClaims, // 🛡️ AUTH GUARD: PM or Admin only
     Path(project_id): Path<Uuid>,
     Json(payload): Json<UpdateBudgetRequest>,
 ) -> Result<Json<ProjectResponse>, (StatusCode, String)> {
-    
+    let claims = pm_claims.0;
     // 1. Fetch current project state
     let project = sqlx::query!(
         r#"SELECT budget_allocated, budget_spent, country_id, name, budget_warning_sent FROM projects WHERE id = $1"#,
@@ -648,10 +648,11 @@ pub async fn get_project_notes(
 // POST /api/projects/:project_id/notes
 pub async fn create_project_note(
     State(pool): State<PgPool>,
-    claims: UserClaims,
+    staff_claims: StaffClaims, // 🛡️ AUTH GUARD: Staff only
     Path(project_id): Path<Uuid>,
     Json(payload): Json<CreateFieldLogRequest>,
 ) -> Result<Json<FieldLogResponse>, (StatusCode, String)> {
+    let claims = staff_claims.0;
     
     // 🛡️ SECURITY: Verify project belongs to user's country
     let project_exists = sqlx::query_scalar!(
@@ -689,10 +690,11 @@ pub async fn create_project_note(
 // PATCH /api/projects/:project_id/notes/:note_id
 pub async fn update_project_note(
     State(pool): State<PgPool>,
-    claims: UserClaims,
+    staff_claims: StaffClaims, // 🛡️ AUTH GUARD: Staff only
     Path((project_id, note_id)): Path<(Uuid, Uuid)>,
     Json(payload): Json<UpdateFieldLogRequest>,
 ) -> Result<Json<FieldLogResponse>, (StatusCode, String)> {
+    let claims = staff_claims.0;
     
     // 1. Fetch note to verify project mapping and ownership
     let note = sqlx::query!(
@@ -735,9 +737,10 @@ pub async fn update_project_note(
 // DELETE /api/projects/:project_id/notes/:note_id
 pub async fn delete_project_note(
     State(pool): State<PgPool>,
-    claims: UserClaims,
+    staff_claims: StaffClaims, // 🛡️ AUTH GUARD: Staff only
     Path((project_id, note_id)): Path<(Uuid, Uuid)>,
 ) -> Result<StatusCode, (StatusCode, String)> {
+    let claims = staff_claims.0;
     // 1. Fetch note to verify project mapping and ownership
     let note = sqlx::query!(
         r#"SELECT author_id, project_id FROM field_logs WHERE id = $1"#,
@@ -799,10 +802,11 @@ pub async fn get_project_messages(
     let messages = sqlx::query_as!(
         ProjectMessageResponse,
         r#"
-        SELECT id, project_id, sender_id, content, created_at
-        FROM project_messages
-        WHERE project_id = $1
-        ORDER BY created_at ASC
+        SELECT pm.id, pm.project_id, pm.sender_id, pm.content, pm.created_at, u.name as "sender_name: Option<String>"
+        FROM project_messages pm
+        JOIN users u ON pm.sender_id = u.id
+        WHERE pm.project_id = $1
+        ORDER BY pm.created_at ASC
         "#,
         project_id
     )
@@ -839,9 +843,14 @@ pub async fn create_project_message(
     let message = sqlx::query_as!(
         ProjectMessageResponse,
         r#"
-        INSERT INTO project_messages (project_id, sender_id, content)
-        VALUES ($1, $2, $3)
-        RETURNING id, project_id, sender_id, content, created_at
+        WITH inserted AS (
+            INSERT INTO project_messages (project_id, sender_id, content)
+            VALUES ($1, $2, $3)
+            RETURNING id, project_id, sender_id, content, created_at
+        )
+        SELECT i.id, i.project_id, i.sender_id, i.content, i.created_at, u.name as "sender_name: Option<String>"
+        FROM inserted i
+        JOIN users u ON i.sender_id = u.id
         "#,
         project_id,
         claims.sub,
@@ -856,93 +865,6 @@ pub async fn create_project_message(
 
 // apps/backend/src/api/projects.rs
 // ... add to the bottom of the file ...
-
-// ─── PROJECT IMPACT METRICS ENDPOINTS ─────────────────────────────────────────
-
-// GET /api/projects/:project_id/impact
-pub async fn get_project_impact_metrics(
-    State(pool): State<PgPool>,
-    claims: UserClaims,
-    Path(project_id): Path<Uuid>,
-) -> Result<Json<Vec<ProjectImpactMetricResponse>>, (StatusCode, String)> {
-    
-    // 🛡️ SECURITY: Verify project belongs to user's country
-    let project_exists = sqlx::query_scalar!(
-        r#"SELECT EXISTS(SELECT 1 FROM projects WHERE id = $1 AND country_id = $2)"#,
-        project_id,
-        claims.country_id
-    )
-    .fetch_one(&pool)
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
-    .unwrap_or(false);
-
-    if !project_exists {
-        return Err((StatusCode::FORBIDDEN, "Access Denied or Project not found".to_string()));
-    }
-
-    let metrics = sqlx::query_as!(
-        ProjectImpactMetricResponse,
-        r#"
-        SELECT id, project_id, metric_template_id, target_value, current_value, is_manual_override, created_at, updated_at
-        FROM project_impact_metrics
-        WHERE project_id = $1
-        "#,
-        project_id
-    )
-    .fetch_all(&pool)
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-
-    Ok(Json(metrics))
-}
-
-// PATCH /api/projects/:project_id/impact/:metric_id
-pub async fn update_project_impact_metric(
-    State(pool): State<PgPool>,
-    claims: UserClaims,
-    Path((project_id, metric_id)): Path<(Uuid, Uuid)>,
-    Json(payload): Json<UpdateImpactMetricRequest>,
-) -> Result<Json<ProjectImpactMetricResponse>, (StatusCode, String)> {
-    
-    // 🛡️ SECURITY: Verify target metric belongs to the specified project and user's country
-    let metric_info = sqlx::query!(
-        r#"
-        SELECT m.id, p.country_id 
-        FROM project_impact_metrics m
-        JOIN projects p ON m.project_id = p.id
-        WHERE m.id = $1 AND m.project_id = $2
-        "#,
-        metric_id,
-        project_id
-    )
-    .fetch_optional(&pool)
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
-    .ok_or((StatusCode::NOT_FOUND, "Metric not found for this project".to_string()))?;
-
-    if metric_info.country_id != claims.country_id {
-        return Err((StatusCode::FORBIDDEN, "Access Denied".to_string()));
-    }
-
-    // Perform manual override update
-    let updated_metric = sqlx::query_as!(
-        ProjectImpactMetricResponse,
-        r#"
-        UPDATE project_impact_metrics
-        SET current_value = $1, is_manual_override = TRUE, updated_at = CURRENT_TIMESTAMP
-        WHERE id = $2
-        RETURNING id, project_id, metric_template_id, target_value, current_value, is_manual_override, created_at, updated_at
-        "#,
-        payload.current_value,
-        metric_id
-    )
-    .fetch_one(&pool)
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-
-    Ok(Json(updated_metric))
-}
 
 // POST /api/projects/:project_id/use-template
 pub async fn use_template(
@@ -1070,11 +992,11 @@ pub async fn use_template(
 // PUT /api/projects/:project_id
 pub async fn update_project(
     State(pool): State<PgPool>,
-    claims: UserClaims, // 🛡️ AUTH GUARD
+    pm_claims: PmOrAdminClaims, // 🛡️ AUTH GUARD: PM or Admin only
     Path(project_id): Path<Uuid>,
     Json(payload): Json<CreateProjectRequest>,
 ) -> Result<Json<ProjectResponse>, (StatusCode, String)> {
-    
+    let claims = pm_claims.0;
     // 1. Verify project exists and belongs to user's country_id
     let current_project = sqlx::query!(
         r#"SELECT country_id, budget_spent, status as "status: ProjectStatus" FROM projects WHERE id = $1"#,

@@ -6,8 +6,7 @@ import { api } from '../lib/api';
 import { useActiveCountry } from '../features/auth/ActiveCountryContext';
 import { PendingSyncBanner } from '../features/sync/SyncManager';
 import type { AlertResponse } from '@pulse/shared-types';
-import { applyTheme, getStoredTheme } from '../lib/theme';
-import type { ThemeMode } from '../lib/theme';
+import { useTheme } from '../context/ThemeContext';
 
 export default function TopNav() {
   const { activeCountryId } = useActiveCountry();
@@ -15,20 +14,10 @@ export default function TopNav() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const [theme, setTheme] = useState<ThemeMode>('light');
+  const { theme, toggleTheme } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    setTheme(getStoredTheme());
-  }, []);
-
-  const toggleTheme = () => {
-    const nextTheme = theme === 'dark' ? 'light' : 'dark';
-    applyTheme(nextTheme);
-    setTheme(nextTheme);
-  };
 
   // Click outside for search dropdown
   useEffect(() => {
@@ -100,7 +89,7 @@ export default function TopNav() {
   const hasUnread = alerts.length > 0;
 
   return (
-    <header className="h-16 bg-white dark:bg-[#0F172A] border-b border-slate-200 dark:border-slate-800 px-8 flex items-center justify-between select-none shrink-0 z-10 sticky top-0">
+    <header className="h-16 bg-white dark:bg-[#0B1220] px-8 flex items-center justify-between select-none shrink-0 z-10 sticky top-0">
       <div className="flex items-center gap-2 mr-6">
         <span className="text-blue-600 dark:text-blue-500 font-extrabold text-2xl tracking-tight font-sans">
           Pulse-Field
@@ -131,7 +120,7 @@ export default function TopNav() {
         </div>
 
         {isSearchFocused && searchQuery.trim().length > 0 && (
-          <div className="absolute left-0 mt-2 z-50 w-72 overflow-hidden rounded-[8px] border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-[#0B1220]">
+          <div className="absolute left-0 mt-2 z-50 w-72 bg-white dark:bg-[#0B1220] border border-gray-200 dark:border-slate-800 shadow-2xl rounded-xl overflow-hidden">
             <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
               Matching Projects
             </div>
@@ -176,7 +165,7 @@ export default function TopNav() {
           title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
           aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
         >
-          {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+          {theme === 'dark' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
         </button>
 
         <div className="relative" ref={dropdownRef}>
@@ -192,7 +181,7 @@ export default function TopNav() {
           </button>
 
           {dropdownOpen && (
-            <div className="absolute right-0 mt-2 w-80 max-h-[400px] overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#1E293B] shadow-xl z-50 py-2">
+            <div className="absolute right-0 mt-2 w-80 max-h-[400px] overflow-y-auto rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#1E293B] shadow-xl z-50 py-2">
               <div className="px-4 py-2 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
                 <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider font-sans">
                   Notifications

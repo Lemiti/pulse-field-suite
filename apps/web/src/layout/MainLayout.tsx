@@ -5,7 +5,7 @@ import TabEngine from './TabEngine';
 
 export default function MainLayout() {
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-50 dark:bg-[#0F172A] font-sans text-slate-900 dark:text-slate-100">
+    <div className="flex h-screen w-screen overflow-hidden bg-slate-50 font-sans text-slate-950 antialiased dark:bg-[#0F172A] dark:text-slate-100">
       {/* LEFT: Sidebar Navigation */}
       <Sidebar />
 

@@ -109,75 +109,75 @@ export default function NewTaskModal({ projectId, onClose, onSuccess }: NewTaskM
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in font-sans">
-      <div className="bg-white border border-slate-200 rounded-xl w-full max-w-lg shadow-2xl p-6 relative">
+      <div className="bg-white dark:bg-[#0B1220] border border-slate-200 dark:border-slate-800 rounded-xl w-full max-w-lg shadow-2xl p-6 relative text-slate-900 dark:text-slate-100">
         
         {/* CLOSE BUTTON */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-1 rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+          className="absolute top-4 right-4 p-1 rounded-full text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
-
+ 
         {/* MODAL HEADER */}
         <div className="mb-6">
-          <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">Create Field Entry</h2>
-          <p className="text-slate-500 text-sm mt-1">Log a new task or structural initiative directly to the field project logs.</p>
+          <h2 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">Create Field Entry</h2>
+          <p className="text-slate-500 dark:text-slate-405 text-sm mt-1">Log a new task or structural initiative directly to the field project logs.</p>
         </div>
-
+ 
         {/* FORM */}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           {errors.root?.message && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-sm p-3 rounded-lg font-semibold">
+            <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-200 text-sm p-3 rounded-lg font-semibold">
               {errors.root.message}
             </div>
           )}
-
+ 
           {/* TASK NAME */}
           <div className="flex flex-col gap-2">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
               Entry / Task Name
             </label>
             <input
               type="text"
               {...register('name')}
               placeholder="e.g., Drill Water Well #25 at Site B"
-              className={`border rounded-lg px-4 py-3 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all ${
-                errors.name ? 'border-red-400' : 'border-slate-300'
+              className={`border rounded-lg px-4 py-3 bg-white text-slate-900 border-slate-300 dark:bg-slate-800 dark:text-white dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all ${
+                errors.name ? 'border-red-400' : ''
               }`}
             />
             {errors.name?.message && (
               <span className="text-xs font-semibold text-red-600">{errors.name.message}</span>
             )}
           </div>
-
+ 
           {/* TASK DURATION */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="flex flex-col gap-2">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                 Start Date
               </label>
               <input
                 type="date"
                 {...register('start_date')}
-                className={`border rounded-lg px-4 py-3 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all ${
-                  errors.start_date ? 'border-red-400' : 'border-slate-300'
+                className={`border rounded-lg px-4 py-3 bg-white text-slate-900 border-slate-300 dark:bg-slate-800 dark:text-white dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all ${
+                  errors.start_date ? 'border-red-400' : ''
                 }`}
               />
               {errors.start_date?.message && (
                 <span className="text-xs font-semibold text-red-600">{errors.start_date.message}</span>
               )}
             </div>
-
+ 
             <div className="flex flex-col gap-2">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                 End Date
               </label>
               <input
                 type="date"
                 {...register('end_date')}
-                className={`border rounded-lg px-4 py-3 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all ${
-                  errors.end_date ? 'border-red-400' : 'border-slate-300'
+                className={`border rounded-lg px-4 py-3 bg-white text-slate-900 border-slate-300 dark:bg-slate-800 dark:text-white dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all ${
+                  errors.end_date ? 'border-red-400' : ''
                 }`}
               />
               {errors.end_date?.message && (
@@ -185,15 +185,15 @@ export default function NewTaskModal({ projectId, onClose, onSuccess }: NewTaskM
               )}
             </div>
           </div>
-
+ 
           {/* ASSIGNED TEAM OFFICER */}
           <div className="flex flex-col gap-2">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
               Assigned Field Officer
             </label>
             <select
               {...register('assignedTo')}
-              className="border border-slate-300 rounded-lg px-4 py-3 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all bg-white"
+              className="border bg-white text-slate-900 border-slate-300 dark:bg-slate-800 dark:text-white dark:border-slate-700 rounded-lg overflow-hidden px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all"
             >
               <option value="">Unassigned (None)</option>
               {fieldOfficers.map((officer) => (
@@ -203,26 +203,26 @@ export default function NewTaskModal({ projectId, onClose, onSuccess }: NewTaskM
               ))}
             </select>
           </div>
-
+ 
           {/* BUTTON ACTIONS */}
           <div className="flex items-center justify-end gap-3 mt-8">
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-3 border border-slate-300 rounded-lg text-slate-600 font-bold hover:bg-slate-50 transition-colors text-sm"
+              className="px-5 py-3 border border-slate-300 dark:border-slate-700 rounded-lg bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 font-bold transition-all text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 dark:focus:ring-offset-[#0B1220]"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting || !isValid}
-              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg disabled:opacity-50 transition-all shadow-md text-sm"
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg disabled:opacity-50 transition-all shadow-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 dark:focus:ring-offset-[#0B1220]"
             >
               {isSubmitting ? 'Submitting...' : 'Submit Entry'}
             </button>
           </div>
         </form>
-
+ 
       </div>
     </div>
   );

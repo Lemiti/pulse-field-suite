@@ -1,8 +1,8 @@
 import { useLocation, Link } from 'react-router-dom';
 import { getUserClaims } from '../lib/auth';
 
-const PROJECT_TABS = ['Dashboard', 'Calendar', 'Messages', 'Note', 'Files', 'Impact'] as const;
-const DONOR_HIDDEN_TABS = new Set(['Messages', 'Note', 'Calendar']);
+const PROJECT_TABS = ['Dashboard', 'Calendar', 'Messages', 'Note', 'Files', 'Impact', 'Settings'] as const;
+const DONOR_HIDDEN_TABS = new Set(['Messages', 'Note', 'Calendar', 'Settings']);
 
 export default function TabEngine() {
   const location = useLocation();
@@ -17,7 +17,13 @@ export default function TabEngine() {
   const projectDirectoryTabs = ['Active', 'Archived', 'Templates'];
   const inboxTabs = ['Unread', 'Messages'];
   const globalTabs = ['Feed', 'Notifications'];
-  const settingsTabs = ['Profile', 'Security', 'Workspace'];
+  const settingsTabs = ['Profile', 'Security'];
+  const userRole = claims?.role?.toUpperCase();
+  if (userRole === 'ADMIN') {
+    settingsTabs.push('Workspace', 'Developer');
+  } else if (userRole === 'PROJECT_MANAGER') {
+    settingsTabs.push('Workspace');
+  }
 
   let activeTabs: string[] = [...globalTabs];
 
@@ -37,7 +43,7 @@ export default function TabEngine() {
   const currentTab = searchParams.get('tab') || activeTabs[0];
 
   return (
-    <div className="h-12 bg-white dark:bg-[#0F172A] border-b border-slate-200 dark:border-slate-800 px-8 flex items-center gap-6 flex-shrink-0 z-0 overflow-x-auto hide-scrollbar">
+    <div className="h-12 bg-white dark:bg-[#0B1220] border-b border-slate-200 dark:border-slate-800 px-8 flex items-center gap-6 flex-shrink-0 z-0 overflow-x-auto hide-scrollbar">
       {activeTabs.map((tab) => {
         const isActive = currentTab === tab;
         return (

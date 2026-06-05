@@ -1,7 +1,9 @@
 use axum::{extract::{Path, State}, http::StatusCode, Json};
 use sqlx::PgPool;
 use uuid::Uuid;
-use crate::api::auth::UserClaims;
+use serde::Deserialize;
+use ts_rs::TS;
+use crate::api::auth::{UserClaims, PmOrAdminClaims, StaffClaims};
 use crate::api::projects::refresh_project_status;
 use crate::models::{CreateTaskRequest, TaskResponse, TaskStatus};
 use crate::models::UpdateTaskStatusRequest;
@@ -45,9 +47,10 @@ pub async fn get_tasks(
 // POST /api/tasks
 pub async fn create_task(
     State(pool): State<PgPool>,
-    claims: UserClaims,
+    pm_claims: PmOrAdminClaims, // 🛡️ AUTH GUARD: PM or Admin only
     Json(payload): Json<CreateTaskRequest>,
 ) -> Result<Json<TaskResponse>, (StatusCode, String)> {
+    let claims = pm_claims.0;
     
     // 🛡️ SECURITY: Verify the user has access to this project before creating the task
     let has_access = sqlx::query_scalar!(
@@ -107,10 +110,11 @@ pub async fn create_task(
 // PATCH /api/tasks/:task_id/status
 pub async fn update_task_status(
     State(pool): State<PgPool>,
-    claims: UserClaims,
+    staff_claims: StaffClaims, // 🛡️ AUTH GUARD: Staff only
     Path(task_id): Path<Uuid>,
     Json(payload): Json<UpdateTaskStatusRequest>,
 ) -> Result<Json<TaskResponse>, (StatusCode, String)> {
+    let claims = staff_claims.0;
     
     // 1. Fetch current task to get the project_id (for the audit log) and verify security
     let current_task = sqlx::query!(
@@ -190,4 +194,100 @@ pub async fn update_task_status(
 
     Ok(Json(updated_task))
 
+}
+
+#[derive(Deserialize, TS, Debug)]
+#[ts(export, export_to = "../../../packages/shared-types/src/UpdateTaskPhaseRequest.ts")]
+pub struct UpdateTaskPhaseRequest {
+    pub phase_id: Option<Uuid>,
+}
+
+// PATCH /api/tasks/:task_id/phase
+pub async fn update_task_phase(
+    State(pool): State<PgPool>,
+    staff_claims: StaffClaims,
+    Path(task_id): Path<Uuid>,
+    Json(payload): Json<UpdateTaskPhaseRequest>,
+) -> Result<Json<TaskResponse>, (StatusCode, String)> {
+    let claims = staff_claims.0;
+
+    let current_task = sqlx::query!(
+        r#"
+        SELECT t.id, t.project_id, t.phase_id, p.country_id
+        FROM tasks t
+        JOIN projects p ON t.project_id = p.id
+        WHERE t.id = $1
+        "#,
+        task_id
+    )
+    .fetch_optional(&pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+    .ok_or((StatusCode::NOT_FOUND, "Task not found".to_string()))?;
+
+    if current_task.country_id != claims.country_id {
+        return Err((StatusCode::FORBIDDEN, "Access Denied".to_string()));
+    }
+
+    if let Some(pid) = payload.phase_id {
+        let phase_project_exists = sqlx::query_scalar!(
+            "SELECT EXISTS(SELECT 1 FROM phases WHERE id = $1 AND project_id = $2)",
+            pid,
+            current_task.project_id
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap_or(Some(false));
+
+        if phase_project_exists != Some(true) {
+            return Err((StatusCode::BAD_REQUEST, "Invalid Phase: belongs to another project".to_string()));
+        }
+    }
+
+    let mut tx = pool.begin().await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let old_val = current_task.phase_id.map(|id| id.to_string()).unwrap_or_else(|| "None".to_string());
+    let new_val = payload.phase_id.map(|id| id.to_string()).unwrap_or_else(|| "None".to_string());
+
+    sqlx::query!(
+        r#"
+        INSERT INTO audit_logs (project_id, user_id, action, old_value, new_value)
+        VALUES ($1, $2, 'UPDATE_TASK_PHASE', $3, $4)
+        "#,
+        current_task.project_id,
+        claims.sub,
+        old_val,
+        new_val
+    )
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let updated_task = sqlx::query_as!(
+        TaskResponse,
+        r#"
+        UPDATE tasks
+        SET phase_id = $1, updated_at = CURRENT_TIMESTAMP
+        WHERE id = $2
+        RETURNING
+            id,
+            project_id,
+            phase_id,
+            name,
+            status as "status: TaskStatus",
+            start_date,
+            end_date,
+            created_at,
+            updated_at
+        "#,
+        payload.phase_id,
+        task_id
+    )
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    tx.commit().await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(Json(updated_task))
 }

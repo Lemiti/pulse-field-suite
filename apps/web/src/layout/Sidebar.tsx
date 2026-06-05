@@ -1,20 +1,24 @@
 import { NavLink } from 'react-router-dom';
-import { Home, Mail, FolderKanban, History, BarChart3, Settings, HelpCircle, LogOut } from 'lucide-react';
+import { Home, Mail, FolderKanban, History, BarChart3, Settings, HelpCircle, LogOut, Handshake } from 'lucide-react';
+import { useAuth } from '../features/auth/AuthContext';
 
 export default function Sidebar() {
+  const { role, logout } = useAuth();
+
   const navItems = [
     { name: 'Home', path: '/', icon: Home },
     { name: 'Inbox', path: '/inbox', icon: Mail },
     { name: 'Projects', path: '/projects', icon: FolderKanban },
+    ...(role === 'ADMIN' ? [{ name: 'Partners', path: '/partners', icon: Handshake }] : []),
     { name: 'Audit Logs', path: '/audit-logs', icon: History },
-    { name: 'Reports', path: '/reports', icon: BarChart3 },
+    ...(role !== 'FIELD_OFFICER' ? [{ name: 'Reports', path: '/reports', icon: BarChart3 }] : []),
     { name: 'Settings', path: '/settings', icon: Settings },
   ];
 
   return (
-    <aside className="w-80 bg-slate-50 dark:bg-[#0F172A] text-slate-600 dark:text-slate-400 flex flex-col h-full select-none border-r border-slate-200 dark:border-slate-800">
+    <aside className="w-80 bg-white dark:bg-[#0B1220] text-slate-600 dark:text-slate-400 flex flex-col h-full select-none border-r border-slate-200/80 dark:border-slate-800 shadow-[8px_0_30px_rgba(15,23,42,0.03)]">
       {/* BRANDING HEADER */}
-      <div className="flex items-center gap-3 px-5 py-5 border-b border-slate-200 dark:border-slate-800">
+      <div className="flex items-center gap-3 px-5 py-5 border-b border-slate-200/80 dark:border-slate-800">
         <img
           src="/brand/engage-now-africa-logo.svg"
           alt="Engage Now Africa logo"
@@ -40,8 +44,8 @@ export default function Sidebar() {
             className={({ isActive }) =>
               `flex items-center gap-4 px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
                 isActive
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/10'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-slate-200'
+                  ? 'bg-[#1273DE] text-white shadow-sm shadow-blue-500/20'
+                  : 'text-slate-600 hover:bg-[#F1F7FF] hover:text-slate-955 dark:text-slate-400 dark:hover:bg-slate-900/80 dark:hover:text-slate-100'
               }`
             }
           >
@@ -56,15 +60,15 @@ export default function Sidebar() {
       </nav>
 
       {/* FOOTER SECTION */}
-      <div className="p-4 border-t border-slate-200 dark:border-slate-800 space-y-4">
+      <div className="p-4 border-t border-slate-200/80 dark:border-slate-800 space-y-4">
         {/* Help Link */}
         <NavLink
           to="/help"
           className={({ isActive }) =>
             `flex items-center gap-4 px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
               isActive 
-                ? 'bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-white' 
-                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-slate-200'
+                ? 'bg-[#F1F7FF] text-slate-955 dark:bg-slate-800 dark:text-white' 
+                : 'text-slate-600 dark:text-slate-400 hover:bg-[#F1F7FF] hover:text-slate-955 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-100'
             }`
           }
         >
@@ -75,11 +79,10 @@ export default function Sidebar() {
         {/* Logout Capsule */}
         <button
           onClick={() => {
-            localStorage.removeItem('token');
-            localStorage.removeItem('activeCountryId');
+            logout();
             window.location.href = '/login';
           }}
-          className="w-full flex items-center gap-4 px-4 py-3 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200"
+          className="w-full flex items-center gap-4 px-4 py-3 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200"
         >
           <LogOut className="w-5 h-5" />
           <span>Logout</span>

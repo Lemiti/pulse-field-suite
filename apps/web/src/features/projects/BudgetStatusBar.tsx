@@ -9,6 +9,7 @@ import { AlertTriangle, DollarSign } from 'lucide-react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useHasRole } from '../../components/RequireRole';
 
 const expenseSchema = z.object({
   amount: z
@@ -155,6 +156,7 @@ export default function BudgetStatusBar({ allocated, spent, projectId }: BudgetS
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [budgetError, setBudgetError] = useState<string | null>(null);
+  const isPmOrAdmin = useHasRole(['PROJECT_MANAGER', 'ADMIN']);
 
   const {
     register,
@@ -223,7 +225,7 @@ export default function BudgetStatusBar({ allocated, spent, projectId }: BudgetS
         <BudgetBar
           allocated={alloc}
           spent={spnt}
-          showExpenseButton={project?.status !== 'COMPLETED'}
+          showExpenseButton={isPmOrAdmin && project?.status !== 'COMPLETED'}
           onAddExpense={() => setDialogOpen(true)}
           isPending={budgetMutation.isPending}
         />
@@ -251,14 +253,14 @@ export default function BudgetStatusBar({ allocated, spent, projectId }: BudgetS
             className="space-y-4"
           >
             <div>
-              <label className="text-xs font-bold text-slate-500 uppercase">Amount (USD)</label>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">Amount (USD)</label>
               <input
                 type="number"
                 min="0.01"
                 step="0.01"
                 {...register('amount', { valueAsNumber: true })}
-                className={`mt-1 w-full px-3 py-2 border rounded-md dark:bg-slate-800 dark:border-slate-700 ${
-                  errors.amount ? 'border-red-500 focus:ring-red-500' : ''
+                className={`mt-1 w-full px-3 py-2 bg-white text-slate-900 border border-slate-300 dark:bg-slate-800 dark:text-white dark:border-slate-700 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-650 transition-all ${
+                  errors.amount ? 'border-red-550 focus:ring-red-500' : ''
                 }`}
               />
               {errors.amount?.message && (
@@ -266,13 +268,13 @@ export default function BudgetStatusBar({ allocated, spent, projectId }: BudgetS
               )}
             </div>
             <div>
-              <label className="text-xs font-bold text-slate-500 uppercase">Reason</label>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">Reason</label>
               <input
                 type="text"
                 {...register('reason')}
                 placeholder="e.g. Pump repair, transport costs"
-                className={`mt-1 w-full px-3 py-2 border rounded-md dark:bg-slate-800 dark:border-slate-700 ${
-                  errors.reason ? 'border-red-500 focus:ring-red-500' : ''
+                className={`mt-1 w-full px-3 py-2 bg-white text-slate-900 border border-slate-300 dark:bg-slate-800 dark:text-white dark:border-slate-700 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-650 transition-all ${
+                  errors.reason ? 'border-red-550 focus:ring-red-500' : ''
                 }`}
               />
               {errors.reason?.message && (
@@ -280,12 +282,12 @@ export default function BudgetStatusBar({ allocated, spent, projectId }: BudgetS
               )}
             </div>
             {budgetError && (
-              <p className="text-sm text-red-500 font-medium">{budgetError}</p>
+              <p className="text-sm text-red-505 font-medium">{budgetError}</p>
             )}
             <button
               type="submit"
               disabled={!isValid || budgetMutation.isPending}
-              className="w-full py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2 dark:focus:ring-offset-[#0B1220]"
             >
               {budgetMutation.isPending ? 'Saving…' : 'Apply to budget'}
             </button>

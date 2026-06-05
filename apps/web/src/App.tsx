@@ -11,9 +11,12 @@ import AuditLogs from './features/audit_logs/AuditLogs';
 import Reports from './features/reports/Reports';
 import Settings from './features/settings/Settings';
 import Inbox from './features/inbox/Inbox';
+import Partners from './features/partners/Partners';
 import { ActiveCountryProvider } from "./features/auth/ActiveCountryContext";
 import { AuthProvider } from "./features/auth/AuthContext";
 import SyncManager from "./features/sync/SyncManager";
+import { ThemeProvider } from "./context/ThemeContext";
+import { Toaster } from 'sonner';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -27,11 +30,14 @@ const queryClient = new QueryClient({
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <ActiveCountryProvider>
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <ActiveCountryProvider>
           <SyncManager />
+          <Toaster richColors closeButton position="top-right" />
           <BrowserRouter>
+
             <Routes>
               <Route path="/login" element={<LoginPage />} />
                 <Route element={<ProtectedRoute />}>
@@ -45,6 +51,7 @@ function App() {
                   <Route path="audit-logs" element={<AuditLogs />} />
                   <Route path="reports" element={<Reports />} />
                   <Route path="settings" element={<Settings />} />
+                  <Route path="partners" element={<Partners />} />
                   <Route path="help" element={<PlaceholderPage title="Help" />} />
                 </Route>
               </Route>
@@ -53,6 +60,7 @@ function App() {
         </ActiveCountryProvider>
       </AuthProvider>
     </QueryClientProvider>
+   </ThemeProvider>
   );
 }
 

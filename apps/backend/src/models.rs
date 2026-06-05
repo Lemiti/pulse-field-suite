@@ -343,6 +343,7 @@ pub struct ProjectMessageResponse {
     pub content: String,
     #[ts(type = "string")]
     pub created_at: Option<DateTime<Utc>>,
+    pub sender_name: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, TS, Debug, Clone)]
@@ -377,12 +378,39 @@ pub struct ProjectImpactMetricResponse {
     pub created_at: Option<DateTime<Utc>>,
     #[ts(type = "string")]
     pub updated_at: Option<DateTime<Utc>>,
+    pub code: String,
+    pub display_name: String,
+    pub unit: String,
 }
 
 #[derive(Serialize, Deserialize, TS, Debug, Clone)]
 #[ts(export, export_to = "../../../packages/shared-types/src/UpdateImpactMetricRequest.ts")]
 pub struct UpdateImpactMetricRequest {
     pub current_value: i32,
+}
+
+#[derive(Serialize, Deserialize, TS, Debug, Clone)]
+#[ts(export, export_to = "../../../packages/shared-types/src/AssignImpactMetricRequest.ts")]
+pub struct AssignImpactMetricRequest {
+    pub metric_template_id: Uuid,
+    pub target_value: i32,
+    pub current_value: i32,
+}
+
+#[derive(Serialize, Deserialize, TS, Debug, Clone)]
+#[ts(export, export_to = "../../../packages/shared-types/src/CreateMetricTemplateRequest.ts")]
+pub struct CreateMetricTemplateRequest {
+    pub code: String,
+    pub display_name: String,
+    pub unit: String,
+}
+
+#[derive(Serialize, Deserialize, TS, Debug, Clone)]
+#[ts(export, export_to = "../../../packages/shared-types/src/UpdateMetricTemplateRequest.ts")]
+pub struct UpdateMetricTemplateRequest {
+    pub code: String,
+    pub display_name: String,
+    pub unit: String,
 }
 
 #[derive(Serialize, Deserialize, TS, Debug, sqlx::FromRow, Clone)]
@@ -395,6 +423,8 @@ pub struct WebhookDeliveryQueueItem {
     #[ts(type = "string")]
     pub next_attempt_at: Option<DateTime<Utc>>,
     pub status: String,
+    #[ts(type = "string")]
+    pub created_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Serialize, Deserialize, TS, Debug, Clone)]
@@ -447,3 +477,59 @@ pub struct CreateProjectMediaRequest {
     pub task_id: Uuid,
     pub gdrive_web_url: String,
 }
+
+#[derive(Serialize, Deserialize, TS, Debug, Clone)]
+#[ts(export, export_to = "../../../packages/shared-types/src/GlobalMetrics.ts")]
+pub struct GlobalMetrics {
+    pub active_projects_count: i64,
+    pub total_budget_allocated: f64,
+    pub total_budget_spent: f64,
+    pub average_progress_percentage: f64,
+}
+
+#[derive(Serialize, Deserialize, TS, Debug, Clone)]
+#[ts(export, export_to = "../../../packages/shared-types/src/ActionItem.ts")]
+pub struct ActionItem {
+    pub id: Uuid,
+    pub project_id: Uuid,
+    pub project_name: String,
+    pub item_type: String, // "ALERT" or "APPROVAL"
+    pub message: String,
+    pub severity: String,
+    #[ts(type = "string")]
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Serialize, Deserialize, TS, Debug, Clone)]
+#[ts(export, export_to = "../../../packages/shared-types/src/ActivityFeedEntry.ts")]
+pub struct ActivityFeedEntry {
+    pub id: Uuid,
+    pub project_id: Uuid,
+    pub project_name: String,
+    pub user_id: Uuid,
+    pub user_name: String,
+    pub activity_type: String, // "AUDIT" or "FIELD_LOG"
+    pub content: String,
+    #[ts(type = "string")]
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Serialize, Deserialize, TS, Debug, Clone)]
+#[ts(export, export_to = "../../../packages/shared-types/src/DashboardSummary.ts")]
+pub struct DashboardSummary {
+    pub global_metrics: GlobalMetrics,
+    pub recent_projects: Vec<ProjectResponse>,
+    pub action_items: Vec<ActionItem>,
+    pub activity_feed: Vec<ActivityFeedEntry>,
+}
+
+#[derive(Serialize, Deserialize, TS, Debug, Clone)]
+#[ts(export, export_to = "../../../packages/shared-types/src/CountryResponse.ts")]
+pub struct CountryResponse {
+    pub id: Uuid,
+    pub name: String,
+    pub currency_code: String,
+    #[ts(type = "any")]
+    pub administrative_boundaries: Option<serde_json::Value>,
+}
+

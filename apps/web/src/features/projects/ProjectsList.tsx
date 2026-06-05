@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../../lib/api';
 import BudgetStatusBar from './BudgetStatusBar';
 import CreateProjectModal from './CreateProjectModal';
 import { ProjectResponse } from '@pulse/shared-types';
+import { RequireRole } from '../../components/RequireRole';
 import { useActiveCountry } from '../auth/ActiveCountryContext';
 import {
   Folder,
@@ -56,11 +57,20 @@ function ProjectProgressBar({ percentage }: { percentage: number }) {
 export default function ProjectsList() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const currentTab = searchParams.get('tab') || 'Active';
   const { activeCountryId } = useActiveCountry();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get('create') === 'true') {
+      setIsModalOpen(true);
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('create');
+      setSearchParams(newParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const { data: projectsData, isLoading, error } = useQuery<ProjectResponse[]>({
     queryKey: ['projects', activeCountryId, currentTab],
@@ -108,9 +118,15 @@ export default function ProjectsList() {
     }
   });
 
-  const totalProjectsCount = displayProjects.length;
-  const totalBudget = displayProjects.reduce((acc, p) => acc + (Number(p.budget_allocated) || 0), 0);
-  const totalSpent = displayProjects.reduce((acc, p) => acc + (Number(p.budget_spent) || 0), 0);
+  // Global portfolio metrics matching Home page (excluding templates)
+  const activeProjects = projects.filter(
+    (p) => !p.is_template && p.status !== 'COMPLETED' && p.status !== 'DRAFT'
+  );
+  const activeProjectsCount = activeProjects.length;
+
+  const allPortfolioProjects = projects.filter((p) => !p.is_template);
+  const totalBudget = allPortfolioProjects.reduce((acc, p) => acc + (Number(p.budget_allocated) || 0), 0);
+  const totalSpent = allPortfolioProjects.reduce((acc, p) => acc + (Number(p.budget_spent) || 0), 0);
   const portfolioSpentPercentage = totalBudget > 0 ? Math.round((totalSpent / totalBudget) * 100) : 0;
 
   const filteredProjects = displayProjects.filter(
@@ -152,13 +168,15 @@ export default function ProjectsList() {
             </p>
           </div>
           {currentTab !== 'Archived' && currentTab !== 'Templates' && (
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="flex items-center justify-center gap-2 bg-white hover:bg-slate-100 text-[#0f172a] font-extrabold text-sm px-6 py-4 rounded-xl shadow-lg transition-all shrink-0"
-            >
-              <Plus className="w-5 h-5 text-blue-600" />
-              <span>Create New Initiative</span>
-            </button>
+            <RequireRole allowedRoles={['PROJECT_MANAGER', 'ADMIN']}>
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="flex items-center justify-center gap-2 bg-white hover:bg-slate-100 text-[#0f172a] font-extrabold text-sm px-6 py-4 rounded-xl shadow-lg transition-all shrink-0"
+              >
+                <Plus className="w-5 h-5 text-blue-600" />
+                <span>Create New Initiative</span>
+              </button>
+            </RequireRole>
           )}
         </div>
       </div>
@@ -169,7 +187,13 @@ export default function ProjectsList() {
             <span className="text-slate-400 font-extrabold text-xs tracking-wider uppercase">
               {currentTab === 'Archived' ? 'Archived Initiatives' : 'Active Initiatives'}
             </span>
-            <h2 className="text-3xl font-extrabold text-slate-800 dark:text-white">{totalProjectsCount}</h2>
+            <h2 className="text-3xl font-extrabold text-slate-800 dark:text-white">
+              {currentTab === 'Archived'
+                ? displayProjects.length
+                : currentTab === 'Templates'
+                ? displayProjects.length
+                : activeProjectsCount}
+            </h2>
           </div>
           <Briefcase className="w-6 h-6 text-blue-600" />
         </div>

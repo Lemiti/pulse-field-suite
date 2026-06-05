@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import type { PhaseResponse, TaskResponse, TaskStatus } from '@pulse/shared-types';
 import {
   AlertTriangle,
@@ -51,8 +51,10 @@ interface ProjectTaskBoardProps {
   tasks: TaskResponse[];
   isLoading: boolean;
   onStatusClick: (taskId: string, position: { top: number; left: number }) => void;
+  onMoveToPhase: (taskId: string, phaseId: string | null) => void;
   isUpdating: boolean;
   onCreatePhase: () => void;
+  readOnly?: boolean;
 }
 
 export function groupTasksByPhase(phases: PhaseResponse[], tasks: TaskResponse[]) {
@@ -91,49 +93,91 @@ function TaskCard({
   onStatusClick,
   isLoading,
   readOnly,
+  phases,
+  onMoveToPhase,
 }: {
   task: TaskResponse;
   onStatusClick: (position: { top: number; left: number }) => void;
   isLoading: boolean;
   readOnly?: boolean;
+  phases?: PhaseResponse[];
+  onMoveToPhase?: (taskId: string, phaseId: string | null) => void;
 }) {
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const config = STATUS_CONFIG[task.status];
 
   return (
-    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow relative">
       <h3 className="text-slate-900 dark:text-white font-semibold text-sm line-clamp-2 mb-3">{task.name}</h3>
-      <button
-        ref={buttonRef}
-        type="button"
-        onClick={() => {
-          if (!readOnly && buttonRef.current) {
-            const rect = buttonRef.current.getBoundingClientRect();
-            onStatusClick({ top: rect.bottom + 8, left: rect.left });
-          }
-        }}
-        disabled={isLoading || readOnly}
-        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium ${config.bg} ${config.text} disabled:opacity-50`}
-      >
-        {config.icon}
-        {config.label}
-        {!readOnly && <ChevronDown className="w-3 h-3 opacity-60" />}
-      </button>
-      <p className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700 text-xs text-slate-500">
-        ID: <span className="font-mono">{task.id.substring(0, 8)}</span>
-      </p>
+      <div className="flex items-center justify-between">
+        <button
+          ref={buttonRef}
+          type="button"
+          onClick={() => {
+            if (!readOnly && buttonRef.current) {
+              const rect = buttonRef.current.getBoundingClientRect();
+              onStatusClick({ top: rect.bottom + 8, left: rect.left });
+            }
+          }}
+          disabled={isLoading || readOnly}
+          className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium ${config.bg} ${config.text} disabled:opacity-50`}
+        >
+          {config.icon}
+          {config.label}
+          {!readOnly && <ChevronDown className="w-3 h-3 opacity-60" />}
+        </button>
+
+        <span className="text-[10px] text-slate-500 font-mono">
+          ID: {task.id.substring(0, 8)}
+        </span>
+      </div>
+
+      {phases && onMoveToPhase && !readOnly && phases.length > 0 && (
+        <div className="relative mt-3 pt-3 border-t border-slate-100 dark:border-slate-700 flex justify-between items-center">
+          <span className="text-xs text-slate-500 font-medium">Unassigned</span>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-100 dark:bg-slate-700/80 hover:bg-slate-200 dark:hover:bg-slate-655 text-slate-700 dark:text-slate-250 transition-colors"
+            >
+              Move to Phase
+              <ChevronDown className="w-3.5 h-3.5 opacity-70" />
+            </button>
+            
+            {isDropdownOpen && (
+              <>
+                <div 
+                  className="fixed inset-0 z-20 cursor-default" 
+                  onClick={() => setIsDropdownOpen(false)} 
+                />
+                
+                <div className="absolute right-0 bottom-full mb-1.5 z-30 w-52 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl py-1">
+                  <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 dark:text-slate-550 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800/80">
+                    Select Phase
+                  </div>
+                  {phases.map((phase) => (
+                    <button
+                      key={phase.id}
+                      type="button"
+                      onClick={() => {
+                        onMoveToPhase(task.id, phase.id);
+                        setIsDropdownOpen(false);
+                      }}
+                      className="w-full text-left px-3.5 py-2 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors cursor-pointer block"
+                    >
+                      {phase.name}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
-}
-
-interface ProjectTaskBoardProps {
-  phases: PhaseResponse[];
-  tasks: TaskResponse[];
-  isLoading: boolean;
-  onStatusClick: (taskId: string, position: { top: number; left: number }) => void;
-  isUpdating: boolean;
-  onCreatePhase: () => void;
-  readOnly?: boolean;
 }
 
 export default function ProjectTaskBoard({
@@ -141,6 +185,7 @@ export default function ProjectTaskBoard({
   tasks,
   isLoading,
   onStatusClick,
+  onMoveToPhase,
   isUpdating,
   onCreatePhase,
   readOnly,
@@ -166,25 +211,25 @@ export default function ProjectTaskBoard({
   return (
     <div className="space-y-8">
       {uncategorized.length > 0 && (
-        <section className="border-2 border-amber-300/80 dark:border-amber-700/80 bg-amber-50/80 dark:bg-amber-950/30 rounded-xl p-6">
+        <section className="border border-slate-300 dark:border-slate-800 bg-slate-100/10 dark:bg-slate-900/40 rounded-xl p-6">
           <div className="flex flex-wrap items-center gap-3 mb-4">
-            <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
+            <AlertTriangle className="w-5 h-5 text-slate-500 dark:text-slate-400 shrink-0" />
             <div className="flex-1">
-              <h2 className="text-lg font-bold text-amber-900 dark:text-amber-100">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
                 Untracked / Uncategorized Tasks
               </h2>
-              <p className="text-sm text-amber-800/90 dark:text-amber-200/80 mt-0.5">
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-0.5">
                 These tasks are not linked to a project phase. Assign them when phases are created.
               </p>
             </div>
-            <span className="px-3 py-1 rounded-full text-sm font-bold bg-amber-200/80 dark:bg-amber-900 text-amber-900 dark:text-amber-100">
+            <span className="px-3 py-1 rounded-full text-sm font-bold bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200">
               {uncategorized.length}
             </span>
             {!readOnly && (
               <button
                 type="button"
                 onClick={onCreatePhase}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold shadow-sm transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-600 hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 text-white text-sm font-bold shadow-sm transition-colors"
               >
                 <Plus className="w-4 h-4" />
                 Create Phase
@@ -199,6 +244,8 @@ export default function ProjectTaskBoard({
                 onStatusClick={(pos) => onStatusClick(task.id, pos)}
                 isLoading={isUpdating}
                 readOnly={readOnly}
+                phases={phases}
+                onMoveToPhase={onMoveToPhase}
               />
             ))}
           </div>

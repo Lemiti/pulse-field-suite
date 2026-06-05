@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { api } from '../../lib/api';
+import { useActiveCountry } from '../auth/ActiveCountryContext';
+import { getCurrentUserId } from '../../lib/auth';
+import type { ProjectResponse, AlertResponse, ProjectMessageResponse } from '@pulse/shared-types';
 import { Bell, MessageCircle, X, Send, Circle } from 'lucide-react';
 
-/**
- * Mock notification data structure
- * In production, this would come from the backend via React Query
- */
 interface Notification {
   id: string;
   type: 'task_assigned' | 'task_completed' | 'budget_alert' | 'system';
@@ -17,9 +18,6 @@ interface Notification {
   projectId?: string;
 }
 
-/**
- * Mock message data structure
- */
 interface ChatMessage {
   id: string;
   sender: string;
@@ -29,9 +27,6 @@ interface ChatMessage {
   isCurrentUser: boolean;
 }
 
-/**
- * Mock channel structure
- */
 interface Channel {
   id: string;
   name: string;
@@ -40,120 +35,118 @@ interface Channel {
 }
 
 // ============= MOCK DATA =============
-const mockNotifications: Notification[] = [
-  {
-    id: '1',
-    type: 'task_assigned',
-    title: 'New Task Assignment',
-    message: 'You have been assigned to "Drill Water Well #25" in the Pulse-Field project.',
-    timestamp: new Date(Date.now() - 30 * 60000), // 30 minutes ago
-    isRead: false,
-    taskId: 'task-001',
-    projectId: 'proj-001',
-  },
-  {
-    id: '2',
-    type: 'task_completed',
-    title: 'Task Completed',
-    message: 'Ama Boateng completed "School Feeding Program Setup" - approval pending.',
-    timestamp: new Date(Date.now() - 2 * 60 * 60000), // 2 hours ago
-    isRead: false,
-    taskId: 'task-002',
-    projectId: 'proj-002',
-  },
-  {
-    id: '3',
-    type: 'budget_alert',
-    title: 'Budget Warning',
-    message: 'The Pulse-Field project has reached 75% of allocated budget. Review spending.',
-    timestamp: new Date(Date.now() - 5 * 60 * 60000), // 5 hours ago
-    isRead: true,
-    projectId: 'proj-001',
-  },
-  {
-    id: '4',
-    type: 'system',
-    title: 'System Maintenance',
-    message: 'Scheduled maintenance completed. All systems operational.',
-    timestamp: new Date(Date.now() - 1 * 24 * 60 * 60000), // 1 day ago
-    isRead: true,
-  },
-];
-
-const mockChannels: Channel[] = [
-  { id: 'ch-1', name: 'General ENA Desk', unreadCount: 2 },
-  { id: 'ch-2', name: 'WASH Clean Water Project Thread', unreadCount: 0 },
-  { id: 'ch-3', name: 'Anti-Trafficking Field Sync', unreadCount: 5 },
-  { id: 'ch-4', name: 'Emergency Response Team', unreadCount: 0 },
-];
-
-const mockMessages: Record<string, ChatMessage[]> = {
-  'ch-1': [
-    {
-      id: 'msg-1',
-      sender: 'Kweku Mensah',
-      senderId: 'user-2',
-      content: 'Good morning team! Ready for today\'s field operations?',
-      timestamp: new Date(Date.now() - 2 * 60 * 60000),
-      isCurrentUser: false,
-    },
-    {
-      id: 'msg-2',
-      sender: 'You',
-      senderId: 'current-user',
-      content: 'Yes! All equipment checked and volunteers briefed. Heading to site A now.',
-      timestamp: new Date(Date.now() - 90 * 60000),
-      isCurrentUser: true,
-    },
-    {
-      id: 'msg-3',
-      sender: 'Ama Boateng',
-      senderId: 'user-1',
-      content: 'Site B showing great progress. Photos uploaded to the gallery.',
-      timestamp: new Date(Date.now() - 45 * 60000),
-      isCurrentUser: false,
-    },
-  ],
-  'ch-2': [
-    {
-      id: 'msg-4',
-      sender: 'Project Lead',
-      senderId: 'user-3',
-      content: 'WASH systems quarterly review scheduled for next Tuesday.',
-      timestamp: new Date(Date.now() - 6 * 60 * 60000),
-      isCurrentUser: false,
-    },
-  ],
-  'ch-3': [
-    {
-      id: 'msg-5',
-      sender: 'Field Officer',
-      senderId: 'user-4',
-      content: 'Completed awareness session at market. 150 attendees engaged.',
-      timestamp: new Date(Date.now() - 1 * 60 * 60000),
-      isCurrentUser: false,
-    },
-  ],
-};
-
-/**
- * Inbox Component
- *
- * Communications hub for field-to-office operations. Provides:
- * - Unread Tab: Timeline of system notifications and task alerts
- * - Messages Tab: Modern chat interface with channel sidebar
- *
- * Features:
- * - TabEngine integration via URL search params
- * - Responsive desktop/mobile layout
- * - Full light/dark mode support
- * - WCAG AAA contrast compliance
- */
+// ============= MAIN INBOX COMPONENT =============
 export default function Inbox() {
   const [searchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'Unread';
-  const [selectedChannelId, setSelectedChannelId] = useState('ch-1');
+  const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const [messageInput, setMessageInput] = useState('');
+  
+  const { activeCountryId } = useActiveCountry();
+  const queryClient = useQueryClient();
+  const currentUserId = getCurrentUserId();
+
+  // 1. Fetch system alerts/notifications
+  const { data: alertsData = [] } = useQuery<AlertResponse[]>({
+    queryKey: ['global-alerts', activeCountryId],
+    queryFn: async () => {
+      const res = await api.get('/alerts');
+      return Array.isArray(res.data) ? res.data : [];
+    },
+  });
+
+  const notifications: Notification[] = alertsData.map((alert) => {
+    let type: Notification['type'] = 'system';
+    let title = 'System Notification';
+    const msgLower = alert.message.toLowerCase();
+    
+    if (msgLower.includes('budget')) {
+      title = 'Budget Warning';
+      type = 'budget_alert';
+    } else if (msgLower.includes('delay') || msgLower.includes('halt') || msgLower.includes('fail')) {
+      title = 'Project Alert';
+      type = 'task_completed';
+    } else if (msgLower.includes('assigned')) {
+      title = 'Task Assigned';
+      type = 'task_assigned';
+    }
+    
+    return {
+      id: alert.id,
+      type,
+      title,
+      message: alert.message,
+      timestamp: alert.created_at ? new Date(alert.created_at) : new Date(),
+      isRead: alert.dismissed,
+      projectId: alert.project_id,
+    };
+  });
+
+  // 2. Fetch projects to populate channels list
+  const { data: projects = [] } = useQuery<ProjectResponse[]>({
+    queryKey: ['projects', activeCountryId],
+    queryFn: async () => {
+      const res = await api.get('/projects');
+      return Array.isArray(res.data) ? res.data : [];
+    },
+  });
+
+  const channels: Channel[] = projects.map((proj) => ({
+    id: proj.id,
+    name: proj.name,
+    unreadCount: 0,
+  }));
+
+  // Auto-select first channel when channels load
+  useEffect(() => {
+    if (projects.length > 0 && !selectedChannelId) {
+      setSelectedChannelId(projects[0].id);
+    }
+  }, [projects, selectedChannelId]);
+
+  // 3. Fetch messages for the selected channel
+  const { data: messages = [] } = useQuery<ProjectMessageResponse[]>({
+    queryKey: ['project-messages', selectedChannelId, activeCountryId],
+    queryFn: async () => {
+      if (!selectedChannelId) return [];
+      const res = await api.get(`/projects/${selectedChannelId}/messages`);
+      return Array.isArray(res.data) ? res.data : [];
+    },
+    enabled: !!selectedChannelId && activeTab === 'Messages',
+    refetchInterval: 4000,
+  });
+
+  const sortedMessages = [...messages].sort(
+    (a, b) => new Date(a.created_at || '').getTime() - new Date(b.created_at || '').getTime()
+  );
+
+  const chatMessages: ChatMessage[] = sortedMessages.map((msg) => ({
+    id: msg.id,
+    sender: msg.sender_name || `Member ${msg.sender_id.slice(0, 8)}`,
+    senderId: msg.sender_id,
+    content: msg.content,
+    timestamp: msg.created_at ? new Date(msg.created_at) : new Date(),
+    isCurrentUser: msg.sender_id === currentUserId,
+  }));
+
+  // 4. Send Message Mutation
+  const sendMessageMutation = useMutation({
+    mutationFn: async (content: string) => {
+      if (!selectedChannelId) throw new Error('No channel selected');
+      const res = await api.post(`/projects/${selectedChannelId}/messages`, { content });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['project-messages', selectedChannelId, activeCountryId],
+      });
+      setMessageInput('');
+    },
+    onError: (err) => {
+      console.error('Failed to send message:', err);
+      alert('Failed to send message. Please try again.');
+    },
+  });
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-fade-in font-sans select-none">
@@ -169,17 +162,31 @@ export default function Inbox() {
         </div>
       </div>
 
-      {/* ============= TAB NAVIGATION (Handled by TabEngine, but we render context-aware content) ============= */}
-      {activeTab === 'Unread' && <UnreadNotificationsTab notifications={mockNotifications} />}
-      {activeTab === 'Messages' && (
+      {/* ============= TAB NAVIGATION ============= */}
+      {activeTab === 'Unread' && <UnreadNotificationsTab notifications={notifications} />}
+      {activeTab === 'Messages' && selectedChannelId && (
         <MessagesTab
-          channels={mockChannels}
+          channels={channels}
           selectedChannelId={selectedChannelId}
           onSelectChannel={setSelectedChannelId}
-          messages={mockMessages[selectedChannelId] || []}
+          messages={chatMessages}
           messageInput={messageInput}
           onMessageInputChange={setMessageInput}
+          onSendMessage={() => {
+            const content = messageInput.trim();
+            if (content) {
+              sendMessageMutation.mutate(content);
+            }
+          }}
+          isSending={sendMessageMutation.isPending}
         />
+      )}
+      {activeTab === 'Messages' && !selectedChannelId && (
+        <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+          <p className="text-slate-500 dark:text-slate-400">
+            No projects available for chat channels.
+          </p>
+        </div>
       )}
 
       {/* Fallback for unknown tabs */}
@@ -388,6 +395,8 @@ interface MessagesTabProps {
   messages: ChatMessage[];
   messageInput: string;
   onMessageInputChange: (input: string) => void;
+  onSendMessage: () => void;
+  isSending?: boolean;
 }
 
 /**
@@ -402,8 +411,17 @@ function MessagesTab({
   messages,
   messageInput,
   onMessageInputChange,
+  onSendMessage,
+  isSending,
 }: MessagesTabProps) {
   const selectedChannel = channels.find((c) => c.id === selectedChannelId);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
 
   if (!Array.isArray(channels) || !selectedChannel) {
     return (
@@ -469,7 +487,10 @@ function MessagesTab({
         </div>
 
         {/* ============= MESSAGE STREAM ============= */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-slate-50/50 to-white dark:from-slate-800/50 dark:to-slate-800">
+        <div 
+          ref={scrollRef}
+          className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-slate-50/50 to-white dark:from-slate-800/50 dark:to-slate-800"
+        >
           {Array.isArray(messages) && messages.length > 0 ? (
             messages.map((message) => (
               <div
@@ -484,14 +505,14 @@ function MessagesTab({
                   }`}
                 >
                   {!message.isCurrentUser && (
-                    <p className="text-xs font-semibold opacity-75 mb-1">
+                    <p className="text-xs font-semibold opacity-75 mb-1 text-left">
                       {message.sender}
                     </p>
                   )}
-                  <p className="text-sm leading-relaxed">
+                  <p className="text-sm leading-relaxed text-left">
                     {message.content}
                   </p>
-                  <p className={`text-xs mt-1.5 ${
+                  <p className={`text-xs mt-1.5 text-left ${
                     message.isCurrentUser
                       ? 'text-blue-100 dark:text-blue-200'
                       : 'text-slate-500 dark:text-slate-400'
@@ -523,19 +544,18 @@ function MessagesTab({
               placeholder="Type your message..."
               className="flex-1 px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && messageInput.trim()) {
-                  // Handle send message here in production
-                  onMessageInputChange('');
+                if (e.key === 'Enter' && messageInput.trim() && !isSending) {
+                  onSendMessage();
                 }
               }}
             />
             <button
-              className="flex-shrink-0 p-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800"
+              disabled={isSending || !messageInput.trim()}
+              className="flex-shrink-0 p-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 disabled:opacity-50"
               aria-label="Send message"
               onClick={() => {
                 if (messageInput.trim()) {
-                  // Handle send message here in production
-                  onMessageInputChange('');
+                  onSendMessage();
                 }
               }}
             >
