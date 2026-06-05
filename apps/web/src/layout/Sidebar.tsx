@@ -14,13 +14,19 @@ export default function Sidebar() {
   return (
     <aside className="w-80 bg-slate-50 dark:bg-[#0F172A] text-slate-600 dark:text-slate-400 flex flex-col h-full select-none border-r border-slate-200 dark:border-slate-800">
       {/* BRANDING HEADER */}
-      <div className="flex items-center gap-3 px-6 py-6 border-b border-slate-200 dark:border-slate-800">
-        <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white text-xl">
-          c
-        </div>
-        <div className="flex flex-col">
-          <span className="text-slate-900 dark:text-white font-bold text-lg tracking-wide leading-tight">Client NGO</span>
-          <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Field Operations</span>
+      <div className="flex items-center gap-3 px-5 py-5 border-b border-slate-200 dark:border-slate-800">
+        <img
+          src="/brand/engage-now-africa-logo.svg"
+          alt="Engage Now Africa logo"
+          className="h-10 w-10 rounded-[8px] object-cover shadow-sm ring-1 ring-slate-200 dark:ring-slate-800"
+        />
+        <div className="flex flex-col min-w-0">
+          <span className="text-slate-950 dark:text-white font-extrabold text-base tracking-tight leading-tight truncate">
+            Engage Now Africa
+          </span>
+          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
+            Field Operations
+          </span>
         </div>
       </div>
 
