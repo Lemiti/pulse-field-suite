@@ -151,7 +151,7 @@ export * from './LoginResponse';
         // 🚀 NEW SECURE ROUTES:
         .route("/api/projects", get(api::projects::get_projects))
         .route("/api/projects", post(api::projects::create_project))
-        .route("/api/projects/:project_id", get(api::projects::get_project))
+        .route("/api/projects/:project_id", get(api::projects::get_project).put(api::projects::update_project))
         .route("/api/projects/:project_id/use-template", post(api::projects::use_template))
         .route("/api/projects/:project_id/tasks", get(api::tasks::get_tasks))
         .route("/api/projects/:project_id/phases", get(get_project_phases).post(create_project_phase))

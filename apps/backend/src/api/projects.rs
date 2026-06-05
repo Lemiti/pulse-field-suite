@@ -23,6 +23,7 @@ pub async fn refresh_project_status(
         r#"
         UPDATE projects
         SET status = CASE
+            WHEN status = 'DRAFT'::project_status THEN 'DRAFT'::project_status
             WHEN EXISTS(SELECT 1 FROM tasks WHERE project_id = $1)
                 AND NOT EXISTS(SELECT 1 FROM tasks WHERE project_id = $1 AND status <> 'COMPLETED')
                 THEN 'COMPLETED'::project_status
@@ -59,6 +60,7 @@ pub async fn get_projects(
             p.budget_allocated,
             p.budget_spent,
             CASE
+                WHEN p.status = 'DRAFT'::project_status THEN 'DRAFT'::project_status
                 WHEN task_rollup.task_count > 0 AND task_rollup.completed_count = task_rollup.task_count
                     THEN 'COMPLETED'::project_status
                 WHEN task_rollup.active_count > 0
@@ -73,7 +75,15 @@ pub async fn get_projects(
                     THEN (task_rollup.completed_days::float8 / task_rollup.total_days::float8) * 100.0
                 ELSE 0.0
             END as "progress_percentage!",
-            p.is_template
+            p.is_template,
+            p.start_date,
+            p.end_date,
+            p.sector_type,
+            p.risks_and_mitigations,
+            p.assumptions,
+            p.outcomes_and_indicators,
+            p.total_income,
+            p.donor_name
         FROM projects p
         LEFT JOIN LATERAL (
             SELECT
@@ -101,6 +111,7 @@ pub async fn get_projects(
                 ProjectStatus::IN_PROGRESS => "IN_PROGRESS",
                 ProjectStatus::COMPLETED => "COMPLETED",
                 ProjectStatus::ON_HOLD => "ON_HOLD",
+                ProjectStatus::DRAFT => "DRAFT",
             };
             status_str.eq_ignore_ascii_case(status_filter)
         });
@@ -128,6 +139,7 @@ pub async fn get_project(
             p.budget_allocated,
             p.budget_spent,
             CASE
+                WHEN p.status = 'DRAFT'::project_status THEN 'DRAFT'::project_status
                 WHEN task_rollup.task_count > 0 AND task_rollup.completed_count = task_rollup.task_count
                     THEN 'COMPLETED'::project_status
                 WHEN task_rollup.active_count > 0
@@ -142,7 +154,15 @@ pub async fn get_project(
                     THEN (task_rollup.completed_days::float8 / task_rollup.total_days::float8) * 100.0
                 ELSE 0.0
             END as "progress_percentage!",
-            p.is_template
+            p.is_template,
+            p.start_date,
+            p.end_date,
+            p.sector_type,
+            p.risks_and_mitigations,
+            p.assumptions,
+            p.outcomes_and_indicators,
+            p.total_income,
+            p.donor_name
         FROM projects p
         LEFT JOIN LATERAL (
             SELECT
@@ -174,15 +194,25 @@ pub async fn create_project(
     Json(payload): Json<CreateProjectRequest>,
 ) -> Result<Json<ProjectResponse>, (StatusCode, String)> {
     
-    // Convert Rust Vec<String> to a JSON value for Postgres
-    let funding_json = serde_json::to_value(&payload.funding_sources)
-        .unwrap_or(serde_json::json!([]));
+    let budget_allocated = payload.budget_allocated.unwrap_or(rust_decimal::Decimal::from(0));
+    let funding_sources = payload.funding_sources.unwrap_or_default();
+    let funding_json = serde_json::to_value(&funding_sources).unwrap_or(serde_json::json!([]));
+    let focus_area = payload.focus_area.unwrap_or(ProjectFocusArea::WASH);
+    let location_metadata = payload.location_metadata.unwrap_or(serde_json::json!({}));
+    let status = payload.status.unwrap_or(ProjectStatus::PLANNING);
+    let risks_and_mitigations = payload.risks_and_mitigations.unwrap_or(serde_json::json!([]));
+    let outcomes_and_indicators = payload.outcomes_and_indicators.unwrap_or(serde_json::json!([]));
 
     let project = sqlx::query_as!(
         ProjectResponse,
         r#"
-        INSERT INTO projects (country_id, name, description, budget_allocated, funding_sources, focus_area, location_metadata)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        INSERT INTO projects (
+            country_id, name, description, budget_allocated, funding_sources, 
+            focus_area, location_metadata, start_date, end_date, status,
+            sector_type, risks_and_mitigations, assumptions, outcomes_and_indicators,
+            total_income, donor_name
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::project_status, $11, $12, $13, $14, $15, $16)
         RETURNING 
             id, country_id, name, description, 
             budget_allocated, 
@@ -192,15 +222,32 @@ pub async fn create_project(
             focus_area as "focus_area: ProjectFocusArea",
             location_metadata,
             0.0::float8 as "progress_percentage!",
-            is_template
+            is_template,
+            start_date,
+            end_date,
+            sector_type,
+            risks_and_mitigations,
+            assumptions,
+            outcomes_and_indicators,
+            total_income,
+            donor_name
         "#,
         claims.country_id, // Automatically bind the project to the user's country!
         payload.name,
         payload.description,
-        payload.budget_allocated,
+        budget_allocated,
         funding_json,
-        payload.focus_area as ProjectFocusArea,
-        payload.location_metadata
+        focus_area as ProjectFocusArea,
+        location_metadata,
+        payload.start_date,
+        payload.end_date,
+        status as ProjectStatus,
+        payload.sector_type,
+        risks_and_mitigations,
+        payload.assumptions,
+        outcomes_and_indicators,
+        payload.total_income,
+        payload.donor_name
     )
     .fetch_one(&pool)
     .await
@@ -285,6 +332,7 @@ pub async fn update_project_budget(
             p.budget_allocated,
             p.budget_spent,
             CASE
+                WHEN p.status = 'DRAFT'::project_status THEN 'DRAFT'::project_status
                 WHEN task_rollup.task_count > 0 AND task_rollup.completed_count = task_rollup.task_count
                     THEN 'COMPLETED'::project_status
                 WHEN task_rollup.active_count > 0
@@ -299,7 +347,15 @@ pub async fn update_project_budget(
                     THEN (task_rollup.completed_days::float8 / task_rollup.total_days::float8) * 100.0
                 ELSE 0.0
             END as "progress_percentage!",
-            p.is_template
+            p.is_template,
+            p.start_date,
+            p.end_date,
+            p.sector_type,
+            p.risks_and_mitigations,
+            p.assumptions,
+            p.outcomes_and_indicators,
+            p.total_income,
+            p.donor_name
         FROM updated_project p
         LEFT JOIN LATERAL (
             SELECT
@@ -1009,4 +1065,100 @@ pub async fn use_template(
     tx.commit().await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     Ok(Json(new_project_id))
+}
+
+// PUT /api/projects/:project_id
+pub async fn update_project(
+    State(pool): State<PgPool>,
+    claims: UserClaims, // 🛡️ AUTH GUARD
+    Path(project_id): Path<Uuid>,
+    Json(payload): Json<CreateProjectRequest>,
+) -> Result<Json<ProjectResponse>, (StatusCode, String)> {
+    
+    // 1. Verify project exists and belongs to user's country_id
+    let current_project = sqlx::query!(
+        r#"SELECT country_id, budget_spent, status as "status: ProjectStatus" FROM projects WHERE id = $1"#,
+        project_id
+    )
+    .fetch_optional(&pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+    .ok_or((StatusCode::NOT_FOUND, "Project not found".to_string()))?;
+
+    if current_project.country_id != claims.country_id {
+        return Err((StatusCode::FORBIDDEN, "Access Denied".to_string()));
+    }
+
+    let budget_allocated = payload.budget_allocated.unwrap_or(rust_decimal::Decimal::from(0));
+    let funding_sources = payload.funding_sources.unwrap_or_default();
+    let funding_json = serde_json::to_value(&funding_sources).unwrap_or(serde_json::json!([]));
+    let focus_area = payload.focus_area.unwrap_or(ProjectFocusArea::WASH);
+    let location_metadata = payload.location_metadata.unwrap_or(serde_json::json!({}));
+    
+    let status = payload.status.unwrap_or(current_project.status);
+    let risks_and_mitigations = payload.risks_and_mitigations.unwrap_or(serde_json::json!([]));
+    let outcomes_and_indicators = payload.outcomes_and_indicators.unwrap_or(serde_json::json!([]));
+
+    let updated = sqlx::query_as!(
+        ProjectResponse,
+        r#"
+        UPDATE projects
+        SET 
+            name = $1,
+            description = $2,
+            budget_allocated = $3,
+            funding_sources = $4,
+            focus_area = $5,
+            location_metadata = $6,
+            start_date = $7,
+            end_date = $8,
+            status = $9::project_status,
+            sector_type = $10,
+            risks_and_mitigations = $11,
+            assumptions = $12,
+            outcomes_and_indicators = $13,
+            total_income = $14,
+            donor_name = $15
+        WHERE id = $16
+        RETURNING
+            id, country_id, name, description, 
+            budget_allocated, 
+            budget_spent, 
+            status as "status: ProjectStatus", 
+            funding_sources,
+            focus_area as "focus_area: ProjectFocusArea",
+            location_metadata,
+            0.0::float8 as "progress_percentage!",
+            is_template,
+            start_date,
+            end_date,
+            sector_type,
+            risks_and_mitigations,
+            assumptions,
+            outcomes_and_indicators,
+            total_income,
+            donor_name
+        "#,
+        payload.name,
+        payload.description,
+        budget_allocated,
+        funding_json,
+        focus_area as ProjectFocusArea,
+        location_metadata,
+        payload.start_date,
+        payload.end_date,
+        status as ProjectStatus,
+        payload.sector_type,
+        risks_and_mitigations,
+        payload.assumptions,
+        outcomes_and_indicators,
+        payload.total_income,
+        payload.donor_name,
+        project_id
+    )
+    .fetch_one(&pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(Json(updated))
 }

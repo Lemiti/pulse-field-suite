@@ -50,7 +50,7 @@ pub enum ProjectFocusArea {
     TRAFFICKING,
 }
 
-#[derive(Serialize, Deserialize, TS, Debug, sqlx::Type)]
+#[derive(Serialize, Deserialize, TS, Debug, sqlx::Type, Clone, Copy, PartialEq, Eq)]
 #[sqlx(type_name = "project_status", rename_all = "SCREAMING_SNAKE_CASE")]
 #[allow(non_camel_case_types)]
 #[ts(export, export_to = "../../../packages/shared-types/src/ProjectStatus.ts")]
@@ -59,6 +59,7 @@ pub enum ProjectStatus {
     IN_PROGRESS,
     COMPLETED,
     ON_HOLD,
+    DRAFT,
 }
 
 #[derive(Serialize, Deserialize, TS, Debug)]
@@ -66,15 +67,29 @@ pub enum ProjectStatus {
 pub struct CreateProjectRequest {
     pub name: String,
     pub description: Option<String>,
-    #[ts(type = "number")]
-    pub budget_allocated: Decimal,
-    pub funding_sources: Vec<String>,
-    pub focus_area: ProjectFocusArea,         // Added
+    #[ts(type = "number | null")]
+    pub budget_allocated: Option<Decimal>,
+    pub funding_sources: Option<Vec<String>>,
+    pub focus_area: Option<ProjectFocusArea>,
     #[ts(type = "any")]
-    pub location_metadata: serde_json::Value, // Added (e.g. {"region": "Oromia", "woreda": "Bishoftu"})
+    pub location_metadata: Option<serde_json::Value>,
+    #[ts(type = "string | null")]
+    pub start_date: Option<chrono::NaiveDate>,
+    #[ts(type = "string | null")]
+    pub end_date: Option<chrono::NaiveDate>,
+    pub status: Option<ProjectStatus>,
+    pub sector_type: Option<String>,
+    #[ts(type = "any")]
+    pub risks_and_mitigations: Option<serde_json::Value>,
+    pub assumptions: Option<String>,
+    #[ts(type = "any")]
+    pub outcomes_and_indicators: Option<serde_json::Value>,
+    #[ts(type = "number | null")]
+    pub total_income: Option<Decimal>,
+    pub donor_name: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, TS, Debug)]
+#[derive(Serialize, Deserialize, TS, Debug, Clone)]
 #[ts(export, export_to = "../../../packages/shared-types/src/ProjectResponse.ts")]
 pub struct ProjectResponse {
     pub id: Uuid,
@@ -88,11 +103,24 @@ pub struct ProjectResponse {
     pub status: ProjectStatus,
     #[ts(type = "string[]")]
     pub funding_sources: serde_json::Value,
-    pub focus_area: ProjectFocusArea,         // Added
+    pub focus_area: ProjectFocusArea,
     #[ts(type = "any")]
-    pub location_metadata: serde_json::Value, // Added
+    pub location_metadata: serde_json::Value,
     pub progress_percentage: f64,
     pub is_template: bool,
+    #[ts(type = "string | null")]
+    pub start_date: Option<chrono::NaiveDate>,
+    #[ts(type = "string | null")]
+    pub end_date: Option<chrono::NaiveDate>,
+    pub sector_type: Option<String>,
+    #[ts(type = "any")]
+    pub risks_and_mitigations: Option<serde_json::Value>,
+    pub assumptions: Option<String>,
+    #[ts(type = "any")]
+    pub outcomes_and_indicators: Option<serde_json::Value>,
+    #[ts(type = "number | null")]
+    pub total_income: Option<Decimal>,
+    pub donor_name: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, TS, Debug)]
