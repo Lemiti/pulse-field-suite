@@ -7,12 +7,16 @@ import { useActiveCountry } from '../features/auth/ActiveCountryContext';
 import { PendingSyncBanner } from '../features/sync/SyncManager';
 import type { AlertResponse } from '@pulse/shared-types';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../features/auth/AuthContext';
 
 export default function TopNav() {
   const { activeCountryId } = useActiveCountry();
   const queryClient = useQueryClient();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [avatarDropdownOpen, setAvatarDropdownOpen] = useState(false);
+  const avatarDropdownRef = useRef<HTMLDivElement>(null);
+  const { logout } = useAuth();
 
   const { theme, toggleTheme } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
@@ -72,6 +76,14 @@ export default function TopNav() {
     },
   });
 
+  const { data: meData } = useQuery({
+    queryKey: ['users-me'],
+    queryFn: async () => {
+      const res = await api.get('/users/me');
+      return res.data;
+    },
+  });
+
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -86,13 +98,27 @@ export default function TopNav() {
     };
   }, [dropdownOpen]);
 
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (avatarDropdownRef.current && !avatarDropdownRef.current.contains(event.target as Node)) {
+        setAvatarDropdownOpen(false);
+      }
+    }
+    if (avatarDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [avatarDropdownOpen]);
+
   const hasUnread = alerts.length > 0;
 
   return (
     <header className="h-16 bg-white dark:bg-[#0B1220] px-8 flex items-center justify-between select-none shrink-0 z-10 sticky top-0">
       <div className="flex items-center gap-2 mr-6">
         <span className="text-blue-600 dark:text-blue-500 font-extrabold text-2xl tracking-tight font-sans">
-          Pulse-Field
+          Engage Now Africa
         </span>
       </div>
 
@@ -165,7 +191,7 @@ export default function TopNav() {
           title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
           aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
         >
-          {theme === 'dark' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+          {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
         </button>
 
         <div className="relative" ref={dropdownRef}>
@@ -226,12 +252,83 @@ export default function TopNav() {
           )}
         </div>
 
-        <div className="flex items-center gap-3">
-          <img
-            src="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=100&h=100&fit=crop&crop=face"
-            alt="User profile"
-            className="w-9 h-9 rounded-full border-2 border-blue-500/20 object-cover shadow-sm"
-          />
+        <div className="relative" ref={avatarDropdownRef}>
+          <button
+            onClick={() => setAvatarDropdownOpen(!avatarDropdownOpen)}
+            className="flex items-center gap-3 p-1 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-lg transition-all focus:outline-none cursor-pointer"
+            title="User menu"
+          >
+            {meData?.avatar_url ? (
+              <img
+                src={meData.avatar_url}
+                alt="User profile"
+                className="w-9 h-9 rounded-full border-2 border-blue-500/20 object-cover shadow-sm"
+              />
+            ) : (
+              <div className="w-9 h-9 rounded-full bg-blue-600 text-white font-bold text-xs flex items-center justify-center border-2 border-blue-500/20 shadow-sm">
+                {meData?.name ? meData.name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() : 'U'}
+              </div>
+            )}
+            <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 hidden sm:inline-block">
+              {meData?.name || 'User'}
+            </span>
+          </button>
+
+          {avatarDropdownOpen && (
+            <div className="absolute right-0 mt-2 w-64 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#1E293B] shadow-xl z-50 py-2 animate-fade-in">
+              {/* Signed in info */}
+              <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-850">
+                <span className="text-[9px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest block">
+                  Signed in as
+                </span>
+                <span className="text-xs font-bold text-slate-800 dark:text-white truncate block mt-0.5">
+                  {meData?.name || 'User'}
+                </span>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate block">
+                  {meData?.email || ''}
+                </span>
+              </div>
+
+              {/* Links */}
+              <div className="py-1">
+                <Link
+                  to="/settings"
+                  onClick={() => setAvatarDropdownOpen(false)}
+                  className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-[#F1F7FF] dark:hover:bg-slate-800/50 transition-colors"
+                >
+                  My Profile
+                </Link>
+                <Link
+                  to="/settings"
+                  onClick={() => setAvatarDropdownOpen(false)}
+                  className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-[#F1F7FF] dark:hover:bg-slate-800/50 transition-colors"
+                >
+                  Workspace Preferences
+                </Link>
+                <Link
+                  to="/help"
+                  onClick={() => setAvatarDropdownOpen(false)}
+                  className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-[#F1F7FF] dark:hover:bg-slate-800/50 transition-colors"
+                >
+                  Help & Support
+                </Link>
+              </div>
+
+              <div className="border-t border-slate-100 dark:border-slate-850 py-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAvatarDropdownOpen(false);
+                    logout();
+                    window.location.href = '/login';
+                  }}
+                  className="w-full text-left flex items-center gap-2 px-4 py-2 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
+                >
+                  Sign Out
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </header>

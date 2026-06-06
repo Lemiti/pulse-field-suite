@@ -14,6 +14,12 @@ import {
 } from 'lucide-react';
 import { Dialog } from '../../components/ui/Dialog';
 
+import { Calendar as BigCalendar, momentLocalizer } from 'react-big-calendar';
+import moment from 'moment';
+import 'react-big-calendar/lib/css/react-big-calendar.css';
+
+const localizer = momentLocalizer(moment);
+
 // Re-use or define status configs for consistent styling
 const STATUS_CONFIG: Record<
   TaskStatus,
@@ -88,12 +94,62 @@ export default function ProjectGantt({
 }: ProjectGanttProps) {
   const [selectedTask, setSelectedTask] = useState<TaskResponse | null>(null);
   const [collapsedPhases, setCollapsedPhases] = useState<Record<string, boolean>>({});
+  const [currentDate, setCurrentDate] = useState<Date>(new Date());
 
   // Parse dates safely
   const parseDate = (dateStr: string | null | undefined): Date | null => {
     if (!dateStr) return null;
     const d = new Date(dateStr);
     return isNaN(d.getTime()) ? null : d;
+  };
+
+  // Map tasks to events for react-big-calendar
+  const calendarEvents = useMemo(() => {
+    return tasks
+      .filter((t) => t.start_date && t.end_date)
+      .map((t) => {
+        const start = new Date(t.start_date!);
+        const end = new Date(t.end_date!);
+        start.setHours(0, 0, 0, 0);
+        end.setHours(23, 59, 59, 999);
+        return {
+          id: t.id,
+          title: t.name,
+          start,
+          end,
+          rawTask: t,
+        };
+      });
+  }, [tasks]);
+
+  const eventPropGetter = (event: any) => {
+    const task = event.rawTask as TaskResponse;
+    const status = task.status;
+    
+    let bg = '#3b82f6';
+    let border = '#2563eb';
+    
+    if (status === 'COMPLETED') {
+      bg = '#10b981';
+      border = '#059669';
+    } else if (status === 'IN_PROGRESS') {
+      bg = '#3b82f6';
+      border = '#2563eb';
+    } else if (status === 'ANALYSIS') {
+      bg = '#f59e0b';
+      border = '#d97706';
+    } else { // PLAN
+      bg = '#64748b';
+      border = '#475569';
+    }
+    
+    return {
+      style: {
+        backgroundColor: bg,
+        borderColor: border,
+        color: '#ffffff',
+      },
+    };
   };
 
   // Determine Gantt range based on task durations
@@ -221,14 +277,14 @@ export default function ProjectGantt({
   return (
     <div className="space-y-6 animate-fade-in select-none">
       {/* TITLE & INFO */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-md dark:shadow-none">
         <div>
-          <h2 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+          <h2 className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
             <Calendar className="w-5 h-5 text-blue-600" />
-            Project Gantt Chart & Timeline
+            Project Calendar & Gantt Timeline
           </h2>
           <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">
-            Visual workspace schedule. Color-coded by progress status. Drag, scroll, and click to inspect details.
+            Visual workspace schedule. Combined Monthly Calendar and Gantt Chart. Color-coded by task status.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -241,8 +297,197 @@ export default function ProjectGantt({
         </div>
       </div>
 
+      {/* MONTHLY GRID CALENDAR */}
+      <div className="border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 shadow-md dark:shadow-none p-5 relative">
+        <style>{`
+          /* Custom styles to make BigCalendar dark-mode friendly and look premium */
+          .rbc-calendar {
+            font-family: inherit;
+            border: none !important;
+            background-color: transparent !important;
+            padding: 0 !important;
+          }
+          .rbc-month-view {
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 8px !important;
+            overflow: hidden !important;
+            background-color: #ffffff !important;
+          }
+          .dark .rbc-month-view {
+            border-color: #1e293b !important;
+            background-color: #0f172a !important;
+          }
+          .rbc-month-row {
+            border-bottom: 1px solid #e2e8f0 !important;
+          }
+          .dark .rbc-month-row {
+            border-bottom-color: #1e293b !important;
+          }
+          .rbc-day-bg {
+            border-right: 1px solid #e2e8f0 !important;
+          }
+          .dark .rbc-day-bg {
+            border-right-color: #1e293b !important;
+          }
+          .rbc-day-bg.rbc-off-range-bg {
+            background-color: #f8fafc !important;
+          }
+          .dark .rbc-day-bg.rbc-off-range-bg {
+            background-color: #0b0f19 !important;
+          }
+          .rbc-day-bg.rbc-today {
+            background-color: #f1f5f9 !important;
+          }
+          .dark .rbc-day-bg.rbc-today {
+            background-color: rgba(30, 41, 59, 0.5) !important;
+          }
+          .rbc-header {
+            border-bottom: 1px solid #e2e8f0 !important;
+            border-right: 1px solid #e2e8f0 !important;
+            padding: 8px 0 !important;
+            font-weight: 700 !important;
+            font-size: 0.75rem !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.05em !important;
+            color: #64748b !important;
+            background-color: #f8fafc !important;
+          }
+          .dark .rbc-header {
+            border-bottom-color: #1e293b !important;
+            border-right-color: #1e293b !important;
+            color: #94a3b8 !important;
+            background-color: rgba(30, 41, 59, 0.3) !important;
+          }
+          .rbc-date-cell {
+            padding: 6px !important;
+            font-size: 0.875rem !important;
+            font-weight: 600 !important;
+            color: #334155 !important;
+          }
+          .dark .rbc-date-cell {
+            color: #cbd5e1 !important;
+          }
+          .rbc-date-cell.rbc-now {
+            color: #3b82f6 !important;
+            font-weight: 800 !important;
+          }
+          .dark .rbc-date-cell.rbc-now {
+            color: #60a5fa !important;
+          }
+          .rbc-event {
+            outline: none !important;
+            transition: transform 0.1s ease, box-shadow 0.1s ease !important;
+            border-radius: 6px !important;
+            font-size: 0.75rem !important;
+            font-weight: 600 !important;
+            padding: 2px 6px !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+          }
+          .rbc-event:hover {
+            transform: translateY(-1px) !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.15) !important;
+          }
+          .rbc-event-content {
+            font-size: 0.75rem !important;
+            font-weight: 600 !important;
+            white-space: nowrap !important;
+            text-overflow: ellipsis !important;
+            overflow: hidden !important;
+          }
+          .rbc-toolbar {
+            margin-bottom: 16px !important;
+            display: flex !important;
+            flex-wrap: wrap !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            gap: 8px !important;
+          }
+          .rbc-toolbar-label {
+            font-size: 1.125rem !important;
+            font-weight: 800 !important;
+            color: #0f172a !important;
+          }
+          .dark .rbc-toolbar-label {
+            color: #ffffff !important;
+          }
+          .rbc-btn-group {
+            display: inline-flex !important;
+            border-radius: 6px !important;
+            overflow: hidden !important;
+            border: 1px solid #cbd5e1 !important;
+            background-color: #ffffff !important;
+          }
+          .dark .rbc-btn-group {
+            border-color: #334155 !important;
+            background-color: #1e293b !important;
+          }
+          .rbc-toolbar button {
+            border: none !important;
+            background: none !important;
+            padding: 6px 12px !important;
+            font-size: 0.75rem !important;
+            font-weight: 700 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.025em !important;
+            color: #475569 !important;
+            cursor: pointer !important;
+            transition: all 0.15s ease !important;
+          }
+          .dark .rbc-toolbar button {
+            color: #cbd5e1 !important;
+          }
+          .rbc-toolbar button:hover {
+            background-color: #f1f5f9 !important;
+          }
+          .dark .rbc-toolbar button:hover {
+            background-color: #334155 !important;
+          }
+          .rbc-toolbar button.rbc-active {
+            background-color: #3b82f6 !important;
+            color: #ffffff !important;
+          }
+          .dark .rbc-toolbar button.rbc-active {
+            background-color: #3b82f6 !important;
+            color: #ffffff !important;
+          }
+          .rbc-show-more {
+            font-weight: 700 !important;
+            font-size: 0.75rem !important;
+            color: #3b82f6 !important;
+            background: none !important;
+            border: none !important;
+            cursor: pointer !important;
+          }
+          .dark .rbc-show-more {
+            color: #60a5fa !important;
+          }
+        `}</style>
+        <div className="mb-4">
+          <h3 className="text-md font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-blue-500" />
+            Monthly Schedule Grid
+          </h3>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+            Click on any task to view or update details.
+          </p>
+        </div>
+        <BigCalendar
+          localizer={localizer}
+          events={calendarEvents}
+          startAccessor="start"
+          endAccessor="end"
+          style={{ height: 450 }}
+          views={['month']}
+          defaultView="month"
+          date={currentDate}
+          onNavigate={(newDate) => setCurrentDate(newDate)}
+          onSelectEvent={(event) => setSelectedTask(event.rawTask)}
+          eventPropGetter={eventPropGetter}
+        />
+      </div>
+
       {/* GANTT SCROLL CONTAINER */}
-      <div className="border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 shadow-sm overflow-hidden flex flex-col">
+      <div className="border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 shadow-md dark:shadow-none overflow-hidden flex flex-col">
         {/* VIEW AREA */}
         <div className="flex overflow-x-auto divide-x divide-slate-200 dark:divide-slate-800 relative">
           
