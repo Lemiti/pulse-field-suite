@@ -13,6 +13,7 @@ import type {
 } from '@pulse/shared-types';
 import { CloudUpload, FileImage, Loader2, Link2, Trash2, ExternalLink, FileText } from 'lucide-react';
 import { getApiErrorMessage } from '../../lib/errors';
+import { toast } from 'sonner';
 
 interface FilesTabProps {
   projectId: string;
@@ -86,39 +87,25 @@ export default function FilesTab({ projectId }: FilesTabProps) {
       setUploading(true);
       setStatus(null);
       try {
-        const urlPayload: GenerateUploadUrlRequest = {
-          task_id: taskId,
-          mime_type: file.type || 'application/octet-stream',
-          file_size: BigInt(file.size),
-        };
-        const urlRes = await api.post<UploadUrlResponse>('/media/upload-url', {
-          ...urlPayload,
-          file_size: Number(urlPayload.file_size),
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('task_id', taskId);
+
+        await api.post(`/projects/${projectId}/files`, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
         });
-        const { upload_url, file_id } = urlRes.data;
 
-        // MVP mock storage URL — skip PUT (external host is not reachable)
-        const isMockUpload = upload_url.includes('mock-gdrive');
-        if (!isMockUpload) {
-          await fetch(upload_url, {
-            method: 'PUT',
-            body: file,
-            headers: { 'Content-Type': file.type || 'application/octet-stream' },
-          });
-        }
-
-        const confirmPayload: ConfirmUploadRequest = {
-          task_id: taskId,
-          file_id,
-          web_url: upload_url,
-        };
-        await api.post('/media/confirm', confirmPayload);
-
-        queryClient.invalidateQueries({ queryKey: ['project-tasks', projectId] });
+        // Refreshes the project attachments list instantly
         queryClient.invalidateQueries({ queryKey: ['project-media', projectId] });
+        queryClient.invalidateQueries({ queryKey: ['project-tasks', projectId] });
+        
+        toast.success(`Successfully uploaded ${file.name} to Google Drive!`);
         setStatus(`Uploaded ${file.name} successfully.`);
       } catch (e) {
         console.error(e);
+        toast.error(`Failed to upload ${file.name}`);
         setStatus(getApiErrorMessage(e, 'Upload failed. Please try again.'));
       } finally {
         setUploading(false);

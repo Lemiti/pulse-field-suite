@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, phase_id, name, dependencies, start_date, end_date\n        FROM tasks\n        WHERE project_id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "phase_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "dependencies",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 4,
+        "name": "start_date",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 5,
+        "name": "end_date",
+        "type_info": "Date"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "db873d7d58d7c77227ffeb9a00e8dad4a03ecb80d398480bd2e9d660ff3059a5"
+}

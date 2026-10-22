@@ -35,7 +35,7 @@ function ProjectProgressBar({ percentage }: { percentage: number }) {
         <span className="text-[11px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
           Project Progress
         </span>
-        <span className="text-sm font-extrabold text-slate-700 dark:text-slate-200">
+        <span className="text-sm font-extrabold text-gray-900 dark:text-slate-200">
           {progress}%
         </span>
       </div>
@@ -174,7 +174,7 @@ export default function ProjectsList() {
                 className="flex items-center justify-center gap-2 bg-white hover:bg-slate-100 text-[#0f172a] font-extrabold text-sm px-6 py-4 rounded-xl shadow-lg transition-all shrink-0"
               >
                 <Plus className="w-5 h-5 text-blue-600" />
-                <span>Create New Initiative</span>
+                <span>Create New Project</span>
               </button>
             </RequireRole>
           )}
@@ -182,12 +182,12 @@ export default function ProjectsList() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-900 border-0 dark:border dark:border-slate-800 rounded-xl p-5 shadow-md dark:shadow-none flex items-center justify-between">
           <div className="space-y-1">
             <span className="text-slate-400 font-extrabold text-xs tracking-wider uppercase">
               {currentTab === 'Archived' ? 'Archived Initiatives' : 'Active Initiatives'}
             </span>
-            <h2 className="text-3xl font-extrabold text-slate-800 dark:text-white">
+            <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white">
               {currentTab === 'Archived'
                 ? displayProjects.length
                 : currentTab === 'Templates'
@@ -197,24 +197,24 @@ export default function ProjectsList() {
           </div>
           <Briefcase className="w-6 h-6 text-blue-600" />
         </div>
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-900 border-0 dark:border dark:border-slate-800 rounded-xl p-5 shadow-md dark:shadow-none flex items-center justify-between">
           <div className="space-y-1">
             <span className="text-slate-400 font-extrabold text-xs tracking-wider uppercase">Wells Completed</span>
-            <h2 className="text-3xl font-extrabold text-slate-800 dark:text-white">24</h2>
+            <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white">24</h2>
           </div>
           <Droplet className="w-6 h-6 text-emerald-600" />
         </div>
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-900 border-0 dark:border dark:border-slate-800 rounded-xl p-5 shadow-md dark:shadow-none flex items-center justify-between">
           <div className="space-y-1">
             <span className="text-slate-400 font-extrabold text-xs tracking-wider uppercase">Allocated Budget</span>
-            <h2 className="text-2xl font-extrabold text-slate-800 dark:text-white">${totalBudget.toLocaleString()}</h2>
+            <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white">ETB {totalBudget.toLocaleString()}</h2>
           </div>
           <DollarSign className="w-6 h-6 text-indigo-600" />
         </div>
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-900 border-0 dark:border dark:border-slate-800 rounded-xl p-5 shadow-md dark:shadow-none flex items-center justify-between">
           <div className="space-y-1">
             <span className="text-slate-400 font-extrabold text-xs tracking-wider uppercase">Portfolio Spent</span>
-            <h2 className="text-3xl font-extrabold text-slate-800 dark:text-white">{portfolioSpentPercentage}%</h2>
+            <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white">{portfolioSpentPercentage}%</h2>
           </div>
           <Activity className="w-6 h-6 text-amber-600" />
         </div>
@@ -222,7 +222,7 @@ export default function ProjectsList() {
 
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-extrabold text-slate-800 dark:text-white tracking-tight">Projects</h2>
+          <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">Projects</h2>
           <div className="relative w-64">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
@@ -230,7 +230,7 @@ export default function ProjectsList() {
               placeholder="Search projects..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg pl-9 pr-4 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-600"
+              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg pl-9 pr-4 py-2 text-xs text-slate-850 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-600"
             />
           </div>
         </div>
@@ -244,7 +244,7 @@ export default function ProjectsList() {
                   return (
                     <div
                       key={p.id}
-                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm hover:shadow-lg transition-all flex flex-col justify-between space-y-6"
+                      className="bg-white dark:bg-slate-900 border-0 dark:border dark:border-slate-800 rounded-xl p-6 shadow-md dark:shadow-none hover:shadow-lg dark:hover:shadow-none transition-all flex flex-col justify-between space-y-6"
                     >
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
@@ -252,10 +252,10 @@ export default function ProjectsList() {
                             {p.focus_area}
                           </span>
                           <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                            Est. Budget: ${allocatedBudget.toLocaleString()}
+                            Est. Budget: ETB {allocatedBudget.toLocaleString()}
                           </span>
                         </div>
-                        <h3 className="text-lg font-extrabold text-slate-800 dark:text-white">
+                        <h3 className="text-lg font-extrabold text-gray-900 dark:text-white">
                           {p.name}
                         </h3>
                         <p className="text-slate-500 dark:text-slate-400 text-sm line-clamp-3 leading-relaxed">
@@ -305,14 +305,14 @@ export default function ProjectsList() {
                         <div
                           key={p.id}
                           onClick={() => navigate(`/projects/${p.id}?tab=Dashboard`)}
-                          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-blue-500/20 rounded-xl p-6 shadow-sm hover:shadow-lg transition-all cursor-pointer group space-y-4"
+                          className="bg-white dark:bg-slate-900 border-0 dark:border dark:border-slate-800 hover:shadow-lg dark:hover:shadow-none rounded-xl p-6 shadow-md dark:shadow-none transition-all cursor-pointer group space-y-4"
                         >
                           <div className="flex items-start gap-4">
                             <div className="p-3 bg-blue-50 dark:bg-blue-950 rounded-lg shrink-0">
                               <Folder className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <h3 className="text-lg font-extrabold text-slate-800 dark:text-white group-hover:text-blue-600 truncate">
+                              <h3 className="text-lg font-extrabold text-gray-900 dark:text-white group-hover:text-blue-600 truncate">
                                 {p.name}
                               </h3>
                               <p className="text-slate-500 dark:text-slate-400 text-sm line-clamp-2">

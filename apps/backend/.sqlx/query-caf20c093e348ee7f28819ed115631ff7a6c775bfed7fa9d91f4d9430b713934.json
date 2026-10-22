@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT \n            m.id,\n            m.task_id,\n            t.name as task_name,\n            m.gdrive_file_id,\n            m.gdrive_web_url,\n            m.uploaded_by,\n            u.name as uploaded_by_name,\n            m.created_at\n        FROM media m\n        JOIN tasks t ON m.task_id = t.id\n        JOIN users u ON m.uploaded_by = u.id\n        WHERE t.project_id = $1\n        ORDER BY m.created_at DESC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "task_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "task_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "gdrive_file_id",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "gdrive_web_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "uploaded_by",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 6,
+        "name": "uploaded_by_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "caf20c093e348ee7f28819ed115631ff7a6c775bfed7fa9d91f4d9430b713934"
+}

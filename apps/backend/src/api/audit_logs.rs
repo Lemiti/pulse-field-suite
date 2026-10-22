@@ -26,12 +26,34 @@ pub async fn get_audit_logs(
             a.user_id, 
             u.name as "user_name!",
             a.action, 
-            a.old_value, 
-            a.new_value, 
+            CASE 
+                WHEN a.action = 'UPDATE_TASK_PHASE' THEN
+                    CASE 
+                        WHEN a.old_value = 'None' OR a.old_value IS NULL THEN 'Uncategorized'
+                        ELSE COALESCE(p_old.name, 'Uncategorized')
+                    END
+                ELSE a.old_value
+            END as "old_value",
+            CASE 
+                WHEN a.action = 'UPDATE_TASK_PHASE' THEN
+                    CASE 
+                        WHEN a.new_value = 'None' OR a.new_value IS NULL THEN 'Uncategorized'
+                        ELSE COALESCE(p_new.name, 'Uncategorized')
+                    END
+                ELSE a.new_value
+            END as "new_value",
             a.created_at
         FROM audit_logs a
         JOIN projects p ON a.project_id = p.id
         JOIN users u ON a.user_id = u.id
+        LEFT JOIN phases p_old ON (
+            a.action = 'UPDATE_TASK_PHASE' 
+            AND p_old.id::text = a.old_value
+        )
+        LEFT JOIN phases p_new ON (
+            a.action = 'UPDATE_TASK_PHASE' 
+            AND p_new.id::text = a.new_value
+        )
         WHERE a.project_id = $1 AND p.country_id = $2
         ORDER BY a.created_at DESC
         "#,
@@ -44,3 +66,4 @@ pub async fn get_audit_logs(
 
     Ok(Json(logs))
 }
+

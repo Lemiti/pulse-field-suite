@@ -1,0 +1,47 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT country_id, budget_spent, status as \"status: ProjectStatus\" FROM projects WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "country_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "budget_spent",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 2,
+        "name": "status: ProjectStatus",
+        "type_info": {
+          "Custom": {
+            "name": "project_status",
+            "kind": {
+              "Enum": [
+                "PLANNING",
+                "IN_PROGRESS",
+                "COMPLETED",
+                "ON_HOLD",
+                "DRAFT"
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "1546ca5610737024492bef1baed7300d0577e866e29549bd5685495dd9398b7a"
+}

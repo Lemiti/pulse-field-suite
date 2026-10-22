@@ -1,5 +1,5 @@
 import React, { createContext, useContext } from 'react';
-import { getUserClaims } from '../../lib/auth';
+import { useAuth } from './AuthContext';
 
 interface ActiveCountryContextType {
   /** Country UUID from JWT — tenant scope for cache keys. */
@@ -9,7 +9,7 @@ interface ActiveCountryContextType {
 const ActiveCountryContext = createContext<ActiveCountryContextType | undefined>(undefined);
 
 export const ActiveCountryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const claims = getUserClaims();
+  const { claims } = useAuth();
   const activeCountryId = claims?.country_id ? String(claims.country_id) : null;
 
   return (

@@ -87,15 +87,13 @@ export default function NewTaskModal({ projectId, onClose, onSuccess }: NewTaskM
         project_id: activeProjectId,
         phase_id: null,
         name: values.name.trim(),
+        assigned_to: values.assignedTo || null,
         start_date: values.start_date,
         end_date: values.end_date,
       };
 
       // POST to backend tasks creation API endpoint
-      await api.post('/tasks', {
-        ...payload,
-        assigned_to: values.assignedTo || null,
-      });
+      await api.post('/tasks', payload);
 
       queryClient.invalidateQueries({ queryKey: ['project-tasks', activeProjectId] });
       onSuccess();

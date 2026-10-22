@@ -13,6 +13,9 @@ pub mod metrics;
 pub mod partners;
 pub mod webhook_worker;
 pub mod countries;
+pub mod logistics;
+pub mod search;
+pub mod beneficiaries;
 
 
 

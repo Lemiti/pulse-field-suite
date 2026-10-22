@@ -1,28 +1,8 @@
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { useActiveCountry } from '../auth/ActiveCountryContext';
-import type { ProjectResponse, ProjectStatsResponse, UpdateBudgetRequest } from '@pulse/shared-types';
-import { getApiErrorMessage } from '../../lib/errors';
-import { Dialog } from '../../components/ui/Dialog';
-import { AlertTriangle, DollarSign } from 'lucide-react';
-import { z } from 'zod';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useHasRole } from '../../components/RequireRole';
-
-const expenseSchema = z.object({
-  amount: z
-    .number()
-    .gt(0, 'Amount must be greater than 0'),
-  reason: z
-    .string()
-    .min(1, 'Reason is required')
-    .transform((val) => val.trim())
-    .refine((val) => val.length > 0, 'Reason cannot be empty'),
-});
-
-type ExpenseFormValues = z.infer<typeof expenseSchema>;
+import type { ProjectResponse, ProjectStatsResponse } from '@pulse/shared-types';
+import { AlertTriangle } from 'lucide-react';
 
 interface BudgetStatusBarProps {
   allocated?: number;
@@ -31,7 +11,7 @@ interface BudgetStatusBarProps {
 }
 
 function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'ETB' }).format(value);
 }
 
 function getUtilizationStatus(utilizationPercent: number) {
@@ -66,15 +46,9 @@ function getUtilizationStatus(utilizationPercent: number) {
 function BudgetBar({
   allocated,
   spent,
-  showExpenseButton,
-  onAddExpense,
-  isPending,
 }: {
   allocated: number;
   spent: number;
-  showExpenseButton?: boolean;
-  onAddExpense?: () => void;
-  isPending?: boolean;
 }) {
   const utilizationPercent = allocated > 0 ? Math.round((spent / allocated) * 100) : 0;
   const barWidth = Math.min(utilizationPercent, 100);
@@ -98,7 +72,7 @@ function BudgetBar({
           <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${statusBadgeColor}`}>
             {statusLabel}
           </span>
-          <span className="text-sm font-extrabold text-slate-700 dark:text-slate-200">
+          <span className="text-sm font-extrabold text-gray-900 dark:text-slate-200">
             {utilizationPercent}%
           </span>
         </div>
@@ -118,59 +92,29 @@ function BudgetBar({
       <div className="grid grid-cols-3 gap-3 text-[11px]">
         <div>
           <span className="text-slate-400 font-semibold uppercase block">Allocated</span>
-          <span className="text-slate-800 dark:text-slate-100 font-extrabold text-xs">
+          <span className="text-gray-900 dark:text-slate-100 font-extrabold text-xs">
             {formatCurrency(allocated)}
           </span>
         </div>
         <div>
           <span className="text-slate-400 font-semibold uppercase block">Spent</span>
-          <span className="text-slate-800 dark:text-slate-100 font-extrabold text-xs">
+          <span className="text-gray-900 dark:text-slate-100 font-extrabold text-xs">
             {formatCurrency(spent)}
           </span>
         </div>
         <div>
           <span className="text-slate-400 font-semibold uppercase block">Remaining</span>
-          <span className="text-slate-800 dark:text-slate-100 font-extrabold text-xs">
+          <span className="text-gray-900 dark:text-slate-100 font-extrabold text-xs">
             {formatCurrency(Math.max(0, allocated - spent))}
           </span>
         </div>
       </div>
-
-      {showExpenseButton && onAddExpense && (
-        <button
-          type="button"
-          onClick={onAddExpense}
-          disabled={isPending}
-          className="mt-1 inline-flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold rounded-lg bg-sky-600 hover:bg-sky-700 text-white disabled:opacity-50"
-        >
-          <DollarSign className="w-3.5 h-3.5" />
-          {isPending ? 'Recording…' : 'Record Expense'}
-        </button>
-      )}
     </div>
   );
 }
 
 export default function BudgetStatusBar({ allocated, spent, projectId }: BudgetStatusBarProps) {
   const { activeCountryId } = useActiveCountry();
-  const queryClient = useQueryClient();
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [budgetError, setBudgetError] = useState<string | null>(null);
-  const isPmOrAdmin = useHasRole(['PROJECT_MANAGER', 'ADMIN']);
-
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors, isValid },
-  } = useForm<ExpenseFormValues>({
-    resolver: zodResolver(expenseSchema),
-    mode: 'onChange',
-    defaultValues: {
-      amount: undefined,
-      reason: '',
-    },
-  });
 
   const { data: stats } = useQuery<ProjectStatsResponse>({
     queryKey: ['project-stats', projectId, activeCountryId],
@@ -190,25 +134,6 @@ export default function BudgetStatusBar({ allocated, spent, projectId }: BudgetS
     enabled: !!projectId,
   });
 
-  const budgetMutation = useMutation({
-    mutationFn: async (payload: UpdateBudgetRequest) => {
-      const res = await api.patch(`/projects/${projectId}/budget`, payload);
-      return res.data as ProjectResponse;
-    },
-    onSuccess: (updated) => {
-      queryClient.setQueryData(['project', projectId, activeCountryId], updated);
-      queryClient.invalidateQueries({ queryKey: ['project', projectId] });
-      queryClient.invalidateQueries({ queryKey: ['project-stats', projectId] });
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
-      setDialogOpen(false);
-      reset();
-      setBudgetError(null);
-    },
-    onError: (err: unknown) => {
-      setBudgetError(getApiErrorMessage(err, 'Failed to record expense.'));
-    },
-  });
-
   if (projectId) {
     const alloc = Number(project?.budget_allocated) || 0;
     const spnt = Number(project?.budget_spent) || 0;
@@ -225,74 +150,12 @@ export default function BudgetStatusBar({ allocated, spent, projectId }: BudgetS
         <BudgetBar
           allocated={alloc}
           spent={spnt}
-          showExpenseButton={isPmOrAdmin && project?.status !== 'COMPLETED'}
-          onAddExpense={() => setDialogOpen(true)}
-          isPending={budgetMutation.isPending}
         />
         {pctFromStats > 90 && (
           <p className="text-xs text-orange-600 dark:text-orange-400 font-semibold mt-1">
             Budget alert: over 90% utilized ({Math.round(pctFromStats)}% per server stats).
           </p>
         )}
-
-        <Dialog
-          open={dialogOpen}
-          onOpenChange={(open) => {
-            setDialogOpen(open);
-            if (!open) {
-              reset();
-              setBudgetError(null);
-            }
-          }}
-          title="Record expense"
-        >
-          <form
-            onSubmit={handleSubmit((values) => {
-              budgetMutation.mutate({ amount_spent: values.amount, reason: values.reason });
-            })}
-            className="space-y-4"
-          >
-            <div>
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">Amount (USD)</label>
-              <input
-                type="number"
-                min="0.01"
-                step="0.01"
-                {...register('amount', { valueAsNumber: true })}
-                className={`mt-1 w-full px-3 py-2 bg-white text-slate-900 border border-slate-300 dark:bg-slate-800 dark:text-white dark:border-slate-700 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-650 transition-all ${
-                  errors.amount ? 'border-red-550 focus:ring-red-500' : ''
-                }`}
-              />
-              {errors.amount?.message && (
-                <p className="text-xs text-red-500 mt-1 font-semibold">{errors.amount.message}</p>
-              )}
-            </div>
-            <div>
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">Reason</label>
-              <input
-                type="text"
-                {...register('reason')}
-                placeholder="e.g. Pump repair, transport costs"
-                className={`mt-1 w-full px-3 py-2 bg-white text-slate-900 border border-slate-300 dark:bg-slate-800 dark:text-white dark:border-slate-700 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-650 transition-all ${
-                  errors.reason ? 'border-red-550 focus:ring-red-500' : ''
-                }`}
-              />
-              {errors.reason?.message && (
-                <p className="text-xs text-red-500 mt-1 font-semibold">{errors.reason.message}</p>
-              )}
-            </div>
-            {budgetError && (
-              <p className="text-sm text-red-505 font-medium">{budgetError}</p>
-            )}
-            <button
-              type="submit"
-              disabled={!isValid || budgetMutation.isPending}
-              className="w-full py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2 dark:focus:ring-offset-[#0B1220]"
-            >
-              {budgetMutation.isPending ? 'Saving…' : 'Apply to budget'}
-            </button>
-          </form>
-        </Dialog>
       </>
     );
   }

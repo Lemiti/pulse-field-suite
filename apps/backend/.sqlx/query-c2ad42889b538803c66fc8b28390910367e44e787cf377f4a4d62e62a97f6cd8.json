@@ -1,0 +1,46 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            t.id,\n            t.project_id,\n            p.name as project_name,\n            t.name as task_name,\n            t.updated_at as \"created_at!\"\n        FROM tasks t\n        JOIN projects p ON t.project_id = p.id\n        WHERE p.country_id = $1 AND t.status = 'ANALYSIS'::task_status\n        ORDER BY t.updated_at DESC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "project_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "project_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "task_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at!",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "c2ad42889b538803c66fc8b28390910367e44e787cf377f4a4d62e62a97f6cd8"
+}

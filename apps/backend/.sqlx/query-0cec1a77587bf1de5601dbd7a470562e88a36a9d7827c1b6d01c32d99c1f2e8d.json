@@ -1,0 +1,94 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            t.id,\n            t.project_id,\n            t.phase_id,\n            t.name,\n            t.status as \"status: TaskStatus\",\n            t.assigned_to,\n            u.name as \"assigned_user_name?\",\n            t.start_date,\n            t.end_date,\n            t.created_at,\n            t.updated_at\n        FROM tasks t\n        LEFT JOIN users u ON t.assigned_to = u.id\n        WHERE t.id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "project_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "phase_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "status: TaskStatus",
+        "type_info": {
+          "Custom": {
+            "name": "task_status",
+            "kind": {
+              "Enum": [
+                "PLAN",
+                "IN_PROGRESS",
+                "COMPLETED",
+                "ANALYSIS"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "assigned_to",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 6,
+        "name": "assigned_user_name?",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "start_date",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 8,
+        "name": "end_date",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "0cec1a77587bf1de5601dbd7a470562e88a36a9d7827c1b6d01c32d99c1f2e8d"
+}

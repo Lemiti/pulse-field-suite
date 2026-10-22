@@ -5,7 +5,6 @@ use axum::{
 };
 use sqlx::PgPool;
 use uuid::Uuid;
-use chrono::{DateTime, Utc};
 
 use crate::api::auth::UserClaims;
 use crate::models::{
@@ -192,6 +191,8 @@ pub async fn assign_project_impact_metric(
         return Err((StatusCode::FORBIDDEN, "Access Denied or Project not found".to_string()));
     }
 
+    crate::api::projects::check_project_write_access(&pool, project_id, claims.sub, &claims.role).await?;
+
     // Insert or update on conflict
     let inserted = sqlx::query!(
         r#"
@@ -266,6 +267,8 @@ pub async fn update_project_impact_metric(
     if metric_info.country_id != claims.country_id {
         return Err((StatusCode::FORBIDDEN, "Access Denied".to_string()));
     }
+
+    crate::api::projects::check_project_write_access(&pool, project_id, claims.sub, &claims.role).await?;
 
     // Update value
     sqlx::query!(

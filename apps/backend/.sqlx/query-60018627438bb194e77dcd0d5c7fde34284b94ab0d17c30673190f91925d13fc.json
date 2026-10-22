@@ -1,0 +1,74 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT dl.id, dl.beneficiary_id, dl.project_id, p.name as project_name, dl.asset_id, a.name as asset_name, dl.quantity, dl.issued_by_user_id, u.name as issued_by_user_name, dl.issued_at\n        FROM distribution_ledger dl\n        LEFT JOIN projects p ON dl.project_id = p.id\n        LEFT JOIN assets a ON dl.asset_id = a.id\n        LEFT JOIN users u ON dl.issued_by_user_id = u.id\n        ORDER BY dl.issued_at DESC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "beneficiary_id",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "project_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "project_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "asset_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
+        "name": "asset_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "quantity",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "issued_by_user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 8,
+        "name": "issued_by_user_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 9,
+        "name": "issued_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "60018627438bb194e77dcd0d5c7fde34284b94ab0d17c30673190f91925d13fc"
+}

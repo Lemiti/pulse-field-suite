@@ -5,11 +5,12 @@ edition = "2021"
 
 [dependencies]
 # Web Framework & Async
-axum = "0.7"
+axum = { version = "0.7", features = ["multipart"] }
+tower-http = { version = "0.5", features = ["fs"] }
 tokio = { version = "1.0", features = ["full"] }
 
 # Database (Postgres)
-sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono", "json", "rust_decimal"] }
+sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono", "json", "rust_decimal", "migrate"] }
 rust_decimal = { version = "1.33", features = ["serde"] }
 
 # Serialization & Types
@@ -30,4 +31,4 @@ jsonwebtoken = "9.3"
 bcrypt = "0.15"
 
 # HTTP Client for AI API calls
-reqwest = { version = "0.12", features = ["json"] }
+reqwest = { version = "0.12", features = ["json", "multipart"] }

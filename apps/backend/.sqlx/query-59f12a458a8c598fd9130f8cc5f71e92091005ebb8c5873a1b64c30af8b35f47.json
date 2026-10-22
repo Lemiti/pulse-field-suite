@@ -1,0 +1,94 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT u.id, u.name, u.email, u.role as \"role: String\", u.country_id, c.name as country_name,\n               u.phone, u.bio, u.focus_area, u.job_title, u.avatar_url\n        FROM users u\n        JOIN countries c ON u.country_id = c.id\n        WHERE u.id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "email",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "role: String",
+        "type_info": {
+          "Custom": {
+            "name": "user_role",
+            "kind": {
+              "Enum": [
+                "ADMIN",
+                "PROJECT_MANAGER",
+                "FIELD_OFFICER",
+                "DONOR"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "country_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
+        "name": "country_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "phone",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "bio",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "focus_area",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 9,
+        "name": "job_title",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 10,
+        "name": "avatar_url",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "59f12a458a8c598fd9130f8cc5f71e92091005ebb8c5873a1b64c30af8b35f47"
+}

@@ -49,7 +49,7 @@ export const ProtectedRoute: React.FC = () => {
       
     if (isReports || isSettingsWorkspace) {
       alert("Access Denied: Field Officers are not authorized to view Reports or Workspace Settings.");
-      return <Navigate to="/" replace />;
+      return <Navigate to="/dashboard" replace />;
     }
   }
 

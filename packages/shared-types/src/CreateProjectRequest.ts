@@ -2,4 +2,4 @@
 import type { ProjectFocusArea } from "./ProjectFocusArea";
 import type { ProjectStatus } from "./ProjectStatus";
 
-export type CreateProjectRequest = { name: string, description: string | null, budget_allocated: number | null, funding_sources: Array<string> | null, focus_area: ProjectFocusArea | null, location_metadata: any, start_date: string | null, end_date: string | null, status: ProjectStatus | null, sector_type: string | null, risks_and_mitigations: any, assumptions: string | null, outcomes_and_indicators: any, total_income: number | null, donor_name: string | null, };
+export type CreateProjectRequest = { name: string, description: string | null, budget_allocated: number | null, funding_sources: Array<string> | null, focus_area: ProjectFocusArea | null, location_metadata: any, start_date: string | null, end_date: string | null, status: ProjectStatus | null, sector_type: string | null, risks_and_mitigations: any, assumptions: string | null, outcomes_and_indicators: any, total_income: number | null, donor_name: string | null, project_leader_id: string | null, member_ids: Array<string> | null, };

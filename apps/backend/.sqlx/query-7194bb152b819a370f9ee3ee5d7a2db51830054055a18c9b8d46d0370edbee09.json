@@ -1,0 +1,56 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE projects\n        SET \n            name = $1,\n            description = $2,\n            budget_allocated = $3,\n            funding_sources = $4,\n            focus_area = $5,\n            location_metadata = $6,\n            start_date = $7,\n            end_date = $8,\n            status = $9::project_status,\n            sector_type = $10,\n            risks_and_mitigations = $11,\n            assumptions = $12,\n            outcomes_and_indicators = $13,\n            total_income = $14,\n            donor_name = $15,\n            project_leader_id = $16\n        WHERE id = $17\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Text",
+        "Numeric",
+        "Jsonb",
+        {
+          "Custom": {
+            "name": "project_focus_area",
+            "kind": {
+              "Enum": [
+                "EDUCATION",
+                "HEALTH",
+                "WASH",
+                "EMPOWERMENT",
+                "TRAFFICKING"
+              ]
+            }
+          }
+        },
+        "Jsonb",
+        "Date",
+        "Date",
+        {
+          "Custom": {
+            "name": "project_status",
+            "kind": {
+              "Enum": [
+                "PLANNING",
+                "IN_PROGRESS",
+                "COMPLETED",
+                "ON_HOLD",
+                "DRAFT"
+              ]
+            }
+          }
+        },
+        "Varchar",
+        "Jsonb",
+        "Text",
+        "Jsonb",
+        "Numeric",
+        "Varchar",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7194bb152b819a370f9ee3ee5d7a2db51830054055a18c9b8d46d0370edbee09"
+}

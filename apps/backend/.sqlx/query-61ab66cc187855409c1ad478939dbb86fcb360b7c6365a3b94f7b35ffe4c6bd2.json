@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM project_partners WHERE project_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "61ab66cc187855409c1ad478939dbb86fcb360b7c6365a3b94f7b35ffe4c6bd2"
+}

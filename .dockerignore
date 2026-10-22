@@ -1,0 +1,12 @@
+.git
+.github
+node_modules
+**/node_modules
+target
+**/target
+dist
+**/dist
+.pnpm-store
+docker-compose.override.yml
+.env
+*.log

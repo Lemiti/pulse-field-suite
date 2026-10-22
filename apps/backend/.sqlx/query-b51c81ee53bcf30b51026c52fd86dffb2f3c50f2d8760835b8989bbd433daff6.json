@@ -1,0 +1,46 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT \n            pp.partner_id,\n            p.name,\n            p.type,\n            p.country_id,\n            pp.contribution_amount\n        FROM project_partners pp\n        JOIN partners p ON pp.partner_id = p.id\n        WHERE pp.project_id = $1\n        ORDER BY p.name ASC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "partner_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "country_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "contribution_amount",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "b51c81ee53bcf30b51026c52fd86dffb2f3c50f2d8760835b8989bbd433daff6"
+}

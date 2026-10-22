@@ -13,6 +13,7 @@ const actionEventMap: Record<string, string> = {
   DELETE_TASK: 'Task Deleted',
   CREATE_PROJECT: 'Project Created',
   ADD_EXPENSE: 'Recorded Expense',
+  UPDATE_TASK_PHASE: 'Task Phase Updated',
 };
 
 const formatActionName = (action: string): string => {
@@ -31,7 +32,7 @@ function formatDeltaValue(value: string | null | undefined): string {
         const amount = parsed.amount_added;
         const reason = parsed.reason;
         if (amount !== undefined || reason !== undefined) {
-          return `Logged Expense: $${amount ?? '0'} (Reason: ${reason ?? 'N/A'})`;
+          return `Logged Expense: ETB ${amount ?? '0'} (Reason: ${reason ?? 'N/A'})`;
         }
         
         // General JSON formatting
@@ -130,8 +131,8 @@ export default function AuditLogs() {
       </div>
 
       {/* ============= PROJECT SELECTOR SECTION ============= */}
-      <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6 space-y-4 animate-fade-in">
-        <label className="block text-sm font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
+      <div className="bg-white dark:bg-slate-800 rounded-lg border-0 dark:border dark:border-slate-700 p-6 space-y-4 shadow-md dark:shadow-none animate-fade-in">
+        <label className="block text-sm font-bold text-gray-900 dark:text-slate-200 uppercase tracking-wider">
           Select Project for Audit Trail
         </label>
 
@@ -147,7 +148,7 @@ export default function AuditLogs() {
               <option value="">-- Choose a project --</option>
               {projects.map((project) => (
                 <option key={project.id} value={project.id}>
-                  {project.name} (Budget: ${project.budget_allocated.toLocaleString()})
+                  {project.name} (Budget: ETB {project.budget_allocated.toLocaleString()})
                 </option>
               ))}
             </select>
@@ -162,7 +163,7 @@ export default function AuditLogs() {
 
       {/* ============= SEARCH & TAB NAVIGATION CONTROLS ============= */}
       {selectedProject && (
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4 animate-fade-in">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-800 rounded-lg border-0 dark:border dark:border-slate-700 p-4 shadow-md dark:shadow-none animate-fade-in">
           {/* Search bar */}
           <div className="relative flex-1 max-w-md">
             <input
@@ -278,7 +279,7 @@ function AllLogsTab({ logs, isLoading, projectName }: AllLogsTabProps) {
   }
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm animate-fade-in">
+    <div className="bg-white dark:bg-slate-800 rounded-lg border-0 dark:border dark:border-slate-700 overflow-hidden shadow-md dark:shadow-none animate-fade-in">
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
@@ -305,7 +306,7 @@ function AllLogsTab({ logs, isLoading, projectName }: AllLogsTabProps) {
                 className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors min-h-[48px] h-auto"
               >
                 {/* Action Event */}
-                <td className="px-4 py-4 text-sm font-semibold text-slate-900 dark:text-white">
+                <td className="px-4 py-4 text-sm font-semibold text-gray-900 dark:text-white">
                   {formatActionName(log.action)}
                 </td>
 

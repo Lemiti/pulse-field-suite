@@ -1,0 +1,43 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE partners\n        SET name = $1, type = $2, country_id = $3\n        WHERE id = $4\n        RETURNING id, name, type, country_id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "country_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Varchar",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "38acefa5621e6c64762f62a951a53815f20a8cb976fa930b1d2f1a64a615aea8"
+}

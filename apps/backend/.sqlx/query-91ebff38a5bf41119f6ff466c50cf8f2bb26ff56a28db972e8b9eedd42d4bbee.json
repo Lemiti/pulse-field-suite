@@ -1,0 +1,74 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT \n            id, \n            pipeline_code, \n            item, \n            qty, \n            supplier, \n            status, \n            expected_date, \n            project, \n            cost, \n            created_at\n        FROM procurement_pipelines\n        ORDER BY created_at DESC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "pipeline_code",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "item",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "qty",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "supplier",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "status",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "expected_date",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 7,
+        "name": "project",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 8,
+        "name": "cost",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "91ebff38a5bf41119f6ff466c50cf8f2bb26ff56a28db972e8b9eedd42d4bbee"
+}

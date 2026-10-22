@@ -26,6 +26,8 @@ pub struct TaskResponse {
     pub phase_id: Option<Uuid>,
     pub name: String,
     pub status: TaskStatus,
+    pub assigned_to: Option<Uuid>,
+    pub assigned_user_name: Option<String>,
     #[ts(type = "string | null")]
     pub start_date: Option<NaiveDate>,
     #[ts(type = "string | null")]
@@ -87,6 +89,8 @@ pub struct CreateProjectRequest {
     #[ts(type = "number | null")]
     pub total_income: Option<Decimal>,
     pub donor_name: Option<String>,
+    pub project_leader_id: Option<Uuid>,
+    pub member_ids: Option<Vec<Uuid>>,
 }
 
 #[derive(Serialize, Deserialize, TS, Debug, Clone)]
@@ -121,6 +125,8 @@ pub struct ProjectResponse {
     #[ts(type = "number | null")]
     pub total_income: Option<Decimal>,
     pub donor_name: Option<String>,
+    pub project_leader_id: Option<Uuid>,
+    pub member_ids: Vec<Uuid>,
 }
 
 #[derive(Serialize, Deserialize, TS, Debug)]
@@ -129,6 +135,7 @@ pub struct CreateTaskRequest {
     pub project_id: Uuid,
     pub phase_id: Option<Uuid>, // Nullable! This satisfies the "Uncategorized Bucket" SRS rule.
     pub name: String,
+    pub assigned_to: Option<Uuid>,
     #[ts(type = "string")]
     pub start_date: NaiveDate,
     #[ts(type = "string")]
@@ -532,4 +539,144 @@ pub struct CountryResponse {
     #[ts(type = "any")]
     pub administrative_boundaries: Option<serde_json::Value>,
 }
+
+#[derive(Serialize, Deserialize, TS, Debug, Clone, sqlx::FromRow)]
+#[ts(export, export_to = "../../../packages/shared-types/src/AssetResponse.ts")]
+pub struct AssetResponse {
+    pub id: Uuid,
+    pub asset_code: String,
+    pub name: String,
+    pub serial: String,
+    pub location: String,
+    pub assigned_to: String,
+    pub condition: String,
+    #[ts(type = "string")]
+    pub purchase_date: NaiveDate,
+    #[ts(type = "number")]
+    pub value: Decimal,
+    #[ts(type = "string")]
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Serialize, Deserialize, TS, Debug, Clone)]
+#[ts(export, export_to = "../../../packages/shared-types/src/CreateAssetRequest.ts")]
+pub struct CreateAssetRequest {
+    pub asset_code: String,
+    pub name: String,
+    pub serial: String,
+    pub location: String,
+    pub assigned_to: String,
+    pub condition: String,
+    #[ts(type = "string")]
+    pub purchase_date: NaiveDate,
+    #[ts(type = "number")]
+    pub value: Decimal,
+}
+
+#[derive(Serialize, Deserialize, TS, Debug, Clone, sqlx::FromRow)]
+#[ts(export, export_to = "../../../packages/shared-types/src/PipelineResponse.ts")]
+pub struct PipelineResponse {
+    pub id: Uuid,
+    pub pipeline_code: String,
+    pub item: String,
+    pub qty: i32,
+    pub supplier: String,
+    pub status: String,
+    #[ts(type = "string")]
+    pub expected_date: NaiveDate,
+    pub project: String,
+    #[ts(type = "number")]
+    pub cost: Decimal,
+    #[ts(type = "string")]
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Serialize, Deserialize, TS, Debug, Clone)]
+#[ts(export, export_to = "../../../packages/shared-types/src/CreatePipelineRequest.ts")]
+pub struct CreatePipelineRequest {
+    pub pipeline_code: String,
+    pub item: String,
+    pub qty: i32,
+    pub supplier: String,
+    pub status: String,
+    #[ts(type = "string")]
+    pub expected_date: NaiveDate,
+    pub project: String,
+    #[ts(type = "number")]
+    pub cost: Decimal,
+}
+
+#[derive(Serialize, Deserialize, TS, Debug, Clone, sqlx::FromRow)]
+#[ts(export, export_to = "../../../packages/shared-types/src/BeneficiaryDependent.ts")]
+pub struct BeneficiaryDependent {
+    pub id: Uuid,
+    pub beneficiary_id: String,
+    pub age: i32,
+    pub vulnerability_notes: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, TS, Debug, Clone, sqlx::FromRow)]
+#[ts(export, export_to = "../../../packages/shared-types/src/DistributionLedgerEntry.ts")]
+pub struct DistributionLedgerEntry {
+    pub id: Uuid,
+    pub beneficiary_id: String,
+    pub project_id: Uuid,
+    pub project_name: Option<String>,
+    pub asset_id: Uuid,
+    pub asset_name: Option<String>,
+    pub quantity: i32,
+    pub issued_by_user_id: Uuid,
+    pub issued_by_user_name: Option<String>,
+    #[ts(type = "string")]
+    pub issued_at: DateTime<Utc>,
+}
+
+#[derive(Serialize, Deserialize, TS, Debug, Clone)]
+#[ts(export, export_to = "../../../packages/shared-types/src/BeneficiaryResponse.ts")]
+pub struct BeneficiaryResponse {
+    pub id: String,
+    pub name: String,
+    pub region: String,
+    pub zone: String,
+    pub woreda: String,
+    pub focus_area: String,
+    pub household_size: i32,
+    pub contact: String,
+    pub registration_date: String,
+    pub has_duplicate_warning: bool,
+    pub duplicate_details: Option<String>,
+    pub age: i32,
+    pub needs: Option<String>,
+    #[ts(type = "any")]
+    pub project_ids: serde_json::Value,
+    pub is_pending: bool,
+    pub source_project_id: Option<Uuid>,
+    pub dependents: Vec<BeneficiaryDependent>,
+    pub distributions: Vec<DistributionLedgerEntry>,
+}
+
+#[derive(Serialize, Deserialize, TS, Debug, Clone)]
+#[ts(export, export_to = "../../../packages/shared-types/src/CreateBeneficiaryRequest.ts")]
+pub struct CreateBeneficiaryRequest {
+    pub name: String,
+    pub region: String,
+    pub zone: String,
+    pub woreda: String,
+    pub focus_area: String,
+    pub household_size: i32,
+    pub contact: String,
+    pub age: i32,
+    pub needs: Option<String>,
+    pub source_project_id: Uuid,
+}
+
+#[derive(Serialize, Deserialize, TS, Debug, Clone)]
+#[ts(export, export_to = "../../../packages/shared-types/src/CreateDistributionRequest.ts")]
+pub struct CreateDistributionRequest {
+    pub beneficiary_id: String,
+    pub project_id: Uuid,
+    pub asset_id: Uuid,
+    pub quantity: i32,
+}
+
 

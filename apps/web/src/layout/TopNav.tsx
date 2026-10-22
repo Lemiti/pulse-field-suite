@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Bell, X, Sun, Moon, Search } from 'lucide-react';
+import { Bell, X, Sun, Moon, Search, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useActiveCountry } from '../features/auth/ActiveCountryContext';
 import { PendingSyncBanner } from '../features/sync/SyncManager';
-import type { AlertResponse } from '@pulse/shared-types';
+import type { AlertResponse, SearchItem } from '@pulse/shared-types';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../features/auth/AuthContext';
 
@@ -48,24 +48,51 @@ export default function TopNav() {
     refetchInterval: 10000,
   });
 
-  const { data: projects = [] } = useQuery<any[]>({
-    queryKey: ['notification-projects', activeCountryId],
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [searchQuery]);
+
+  const { data: searchResults = [], isLoading: isSearchLoading } = useQuery<SearchItem[]>({
+    queryKey: ['global-search', debouncedSearchQuery],
     queryFn: async () => {
-      const res = await api.get('/projects');
+      if (!debouncedSearchQuery.trim()) return [];
+      const res = await api.get(`/search?q=${encodeURIComponent(debouncedSearchQuery)}`);
       return Array.isArray(res.data) ? res.data : [];
     },
-    enabled: !!activeCountryId,
+    enabled: debouncedSearchQuery.trim().length > 0,
   });
 
-  const filteredProjects = useMemo(() => {
-    if (!searchQuery.trim()) return [];
-    const q = searchQuery.toLowerCase();
-    return projects.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        (p.description && p.description.toLowerCase().includes(q))
-    );
-  }, [projects, searchQuery]);
+  const groupedResults = useMemo(() => {
+    const groups: {
+      projects: SearchItem[];
+      beneficiaries: SearchItem[];
+      assets: SearchItem[];
+    } = {
+      projects: [],
+      beneficiaries: [],
+      assets: [],
+    };
+
+    searchResults.forEach((item) => {
+      if (item.item_type === 'PROJECT') {
+        groups.projects.push(item);
+      } else if (item.item_type === 'BENEFICIARY') {
+        groups.beneficiaries.push(item);
+      } else if (item.item_type === 'ASSET') {
+        groups.assets.push(item);
+      }
+    });
+
+    return groups;
+  }, [searchResults]);
 
   const dismissMutation = useMutation({
     mutationFn: async (alertId: string) => {
@@ -131,7 +158,7 @@ export default function TopNav() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onFocus={() => setIsSearchFocused(true)}
-            placeholder="Search projects..."
+            placeholder="Search projects, assets, beneficiaries..."
             className="w-full bg-transparent text-xs font-medium text-slate-850 placeholder-slate-400 outline-none dark:text-slate-100"
           />
           {searchQuery && (
@@ -146,38 +173,104 @@ export default function TopNav() {
         </div>
 
         {isSearchFocused && searchQuery.trim().length > 0 && (
-          <div className="absolute left-0 mt-2 z-50 w-72 bg-white dark:bg-[#0B1220] border border-gray-200 dark:border-slate-800 shadow-2xl rounded-xl overflow-hidden">
-            <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              Matching Projects
-            </div>
-            <div className="max-h-60 overflow-y-auto divide-y divide-slate-50 dark:divide-slate-850">
-              {filteredProjects.length === 0 ? (
-                <div className="px-3 py-4 text-center text-xs text-slate-500 dark:text-slate-400">
-                  No projects found
-                </div>
-              ) : (
-                filteredProjects.map((p) => (
-                  <Link
-                    key={p.id}
-                    to={`/projects/${p.id}`}
-                    onClick={() => {
-                      setSearchQuery('');
-                      setIsSearchFocused(false);
-                    }}
-                    className="block px-3 py-2.5 hover:bg-[#F1F7FF] dark:hover:bg-slate-900 text-left transition"
-                  >
-                    <p className="text-xs font-bold text-slate-800 dark:text-white truncate">
-                      {p.name}
-                    </p>
-                    {p.description && (
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
-                        {p.description}
-                      </p>
-                    )}
-                  </Link>
-                ))
-              )}
-            </div>
+          <div className="absolute left-0 mt-2 z-50 w-80 bg-white dark:bg-[#0B1220] border border-gray-200 dark:border-slate-800 shadow-2xl rounded-xl overflow-hidden max-h-96 overflow-y-auto">
+            {isSearchLoading ? (
+              <div className="px-4 py-6 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                <span>Searching database...</span>
+              </div>
+            ) : searchResults.length === 0 ? (
+              <div className="px-4 py-6 text-center text-xs text-slate-500 dark:text-slate-400">
+                No matches found
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100 dark:divide-slate-855">
+                {/* 1. PROJECTS GROUP */}
+                {groupedResults.projects.length > 0 && (
+                  <div>
+                    <div className="px-3 py-2 bg-slate-50 dark:bg-slate-900/60 text-[10px] font-extrabold text-slate-450 dark:text-slate-500 uppercase tracking-wider">
+                      Projects
+                    </div>
+                    {groupedResults.projects.map((p) => (
+                      <Link
+                        key={p.id}
+                        to={`/projects/${p.id}`}
+                        onClick={() => {
+                          setSearchQuery('');
+                          setIsSearchFocused(false);
+                        }}
+                        className="block px-3 py-2.5 hover:bg-[#F1F7FF] dark:hover:bg-slate-900 text-left transition"
+                      >
+                        <p className="text-xs font-bold text-slate-800 dark:text-white truncate">
+                          {p.name}
+                        </p>
+                        {p.details && (
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                            {p.details}
+                          </p>
+                        )}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+
+                {/* 2. ASSETS GROUP */}
+                {groupedResults.assets.length > 0 && (
+                  <div>
+                    <div className="px-3 py-2 bg-slate-50 dark:bg-slate-900/60 text-[10px] font-extrabold text-slate-455 dark:text-slate-500 uppercase tracking-wider">
+                      Logistics Assets
+                    </div>
+                    {groupedResults.assets.map((a) => (
+                      <Link
+                        key={a.id}
+                        to={`/logistics?tab=assets&highlight=${a.id}`}
+                        onClick={() => {
+                          setSearchQuery('');
+                          setIsSearchFocused(false);
+                        }}
+                        className="block px-3 py-2.5 hover:bg-[#F1F7FF] dark:hover:bg-slate-900 text-left transition"
+                      >
+                        <p className="text-xs font-bold text-slate-800 dark:text-white truncate">
+                          {a.name}
+                        </p>
+                        {a.details && (
+                          <p className="text-[10px] font-mono text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                            Code: {a.details}
+                          </p>
+                        )}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+
+                {/* 3. BENEFICIARIES GROUP */}
+                {groupedResults.beneficiaries.length > 0 && (
+                  <div>
+                    <div className="px-3 py-2 bg-slate-50 dark:bg-slate-900/60 text-[10px] font-extrabold text-slate-455 dark:text-slate-500 uppercase tracking-wider">
+                      Beneficiaries
+                    </div>
+                    {groupedResults.beneficiaries.map((b) => (
+                      <Link
+                        key={b.id}
+                        to={`/beneficiaries?id=${b.id}`}
+                        onClick={() => {
+                          setSearchQuery('');
+                          setIsSearchFocused(false);
+                        }}
+                        className="block px-3 py-2.5 hover:bg-[#F1F7FF] dark:hover:bg-slate-900 text-left transition"
+                      >
+                        <p className="text-xs font-bold text-slate-800 dark:text-white truncate">
+                          {b.name}
+                        </p>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                          ID: {b.id} • Woreda: {b.details || 'N/A'}
+                        </p>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

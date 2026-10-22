@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO webhook_delivery_queue (payload, status)\n            VALUES ($1, 'PENDING')\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8ec129efcdc965e7b306b3d12afbfab3cc825563543ad2610647d66ae5239d9a"
+}

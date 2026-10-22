@@ -1,0 +1,46 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT budget_allocated, budget_spent, country_id, name, budget_warning_sent FROM projects WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "budget_allocated",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 1,
+        "name": "budget_spent",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 2,
+        "name": "country_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "budget_warning_sent",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "af787e9477ef9ac98f48facba03f4fb682521b4423b37b6d7ae867a5660618d6"
+}

@@ -177,7 +177,7 @@ export default function Partners() {
       </div>
 
       {/* ============= FILTER & SEARCH BAR ============= */}
-      <div className="bg-white dark:bg-[#0B1220] border border-slate-200/80 dark:border-slate-800 rounded-xl p-4 shadow-sm flex flex-col md:flex-row gap-4 items-center">
+      <div className="bg-white dark:bg-[#0B1220] border-0 dark:border dark:border-slate-800 rounded-xl p-4 shadow-md dark:shadow-none flex flex-col md:flex-row gap-4 items-center">
         <div className="relative flex-1 w-full">
           <Search className="absolute left-3.5 top-3 w-4 h-4 text-slate-400 dark:text-slate-500" />
           <input
@@ -195,17 +195,17 @@ export default function Partners() {
 
       {/* ============= PARTNERS GRID/LIST ============= */}
       {filteredPartners.length === 0 ? (
-        <div className="bg-white dark:bg-[#0B1220] border border-slate-200/80 dark:border-slate-800 rounded-xl p-12 text-center shadow-sm">
+        <div className="bg-white dark:bg-[#0B1220] border-0 dark:border dark:border-slate-800 rounded-xl p-12 text-center shadow-md dark:shadow-none">
           <div className="w-16 h-16 bg-slate-50 dark:bg-slate-900 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-200/60 dark:border-slate-800">
-            <Building2 className="w-8 h-8 text-slate-400 dark:text-slate-550" />
+            <Building2 className="w-8 h-8 text-slate-400 dark:text-slate-555" />
           </div>
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white">No partners found</h3>
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white">No partners found</h3>
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-1 max-w-md mx-auto">
             {searchTerm ? "No partners match your search query. Try typing something else." : "Get started by adding your first funding partner or organization using the button above."}
           </p>
         </div>
       ) : (
-        <div className="bg-white dark:bg-[#0B1220] border border-slate-200/80 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+        <div className="bg-white dark:bg-[#0B1220] border-0 dark:border dark:border-slate-800 rounded-xl overflow-hidden shadow-md dark:shadow-none">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800 text-[11px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
@@ -227,7 +227,7 @@ export default function Partners() {
                         {partner.name.charAt(0).toUpperCase()}
                       </div>
                       <div>
-                        <span className="block font-bold text-slate-900 dark:text-white text-base">
+                        <span className="block font-bold text-gray-900 dark:text-white text-base">
                           {partner.name}
                         </span>
                         <span className="block text-[10px] text-slate-405 uppercase tracking-wider font-extrabold mt-0.5">

@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT p.country_id\n        FROM alerts a\n        JOIN projects p ON a.project_id = p.id\n        WHERE a.id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "country_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "92d90b62a157d0a48a51ad94814cc86b5d1d6e11893c38f37b5ddf74ef058ddb"
+}

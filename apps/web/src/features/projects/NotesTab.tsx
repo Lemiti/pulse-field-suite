@@ -47,11 +47,13 @@ function NoteBlock({
   currentUserId,
   onEdit,
   onDelete,
+  isArchived,
 }: {
   note: FieldLogResponse;
   currentUserId: string | null;
   onEdit: () => void;
   onDelete: () => void;
+  isArchived: boolean;
 }) {
   const { name, role } = authorLabel(note.author_id, currentUserId);
   const created = new Date(note.created_at).toLocaleString(undefined, {
@@ -61,10 +63,10 @@ function NoteBlock({
   const isOwner = currentUserId === note.author_id;
 
   return (
-    <article className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 p-5 shadow-sm">
+    <article className="rounded-xl border-0 dark:border dark:border-slate-800 bg-white dark:bg-slate-900/80 p-5 shadow-md dark:shadow-none">
       <header className="flex flex-wrap items-center justify-between gap-2 mb-3">
         <div>
-          <p className="text-sm font-bold text-slate-900 dark:text-white">{name}</p>
+          <p className="text-sm font-bold text-gray-900 dark:text-white">{name}</p>
           <span className="inline-block mt-0.5 text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
             {role}
           </span>
@@ -74,7 +76,7 @@ function NoteBlock({
           {note.is_edited && (
             <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400">(edited)</span>
           )}
-          {isOwner && (
+          {isOwner && !isArchived && (
             <div className="flex items-center gap-3">
               <button
                 type="button"
@@ -109,6 +111,17 @@ export default function NotesTab({ projectId }: NotesTabProps) {
   const currentUserId = getCurrentUserId();
   const [editingNote, setEditingNote] = useState<FieldLogResponse | null>(null);
   const [editContent, setEditContent] = useState('');
+
+  const { data: project } = useQuery<any>({
+    queryKey: ['project', projectId, activeCountryId],
+    queryFn: async () => {
+      const res = await api.get(`/projects/${projectId}`);
+      return res.data;
+    },
+    enabled: !!projectId,
+  });
+
+  const isArchived = project?.status === 'COMPLETED' || (project?.status as string) === 'Archived';
 
   const createMethods = useForm<CreateNoteForm>({
     resolver: zodResolver(createNoteSchema),
@@ -161,43 +174,45 @@ export default function NotesTab({ projectId }: NotesTabProps) {
 
   return (
     <div className="space-y-6 max-w-3xl">
-      <FormProvider {...createMethods}>
-        <form
-          onSubmit={createMethods.handleSubmit((data) => {
-            createMutation.mutate({ content: data.content });
-          })}
-          className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 p-4 space-y-3"
-        >
-          <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">New field note</h3>
-          <div>
-            <label htmlFor="content" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-              Note
-            </label>
-            <textarea
-              id="content"
-              spellCheck="true"
-              rows={4}
-              placeholder="Document field observations…"
-              className={`mt-1 w-full px-3 py-2 border rounded-md bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 ${
-                createMethods.formState.errors.content ? 'border-red-500' : ''
-              }`}
-              {...createMethods.register('content')}
-            />
-            {createMethods.formState.errors.content?.message && (
-              <span className="text-xs text-red-500 font-medium">
-                {String(createMethods.formState.errors.content.message)}
-              </span>
-            )}
-          </div>
-          <button
-            type="submit"
-            disabled={createMutation.isPending}
-            className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold disabled:opacity-50"
+      {!isArchived && (
+        <FormProvider {...createMethods}>
+          <form
+            onSubmit={createMethods.handleSubmit((data) => {
+              createMutation.mutate({ content: data.content });
+            })}
+            className="rounded-xl border-0 dark:border dark:border-slate-800 bg-white dark:bg-slate-900/50 p-4 space-y-3 shadow-md dark:shadow-none"
           >
-            {createMutation.isPending ? 'Posting…' : 'Post note'}
-          </button>
-        </form>
-      </FormProvider>
+            <h3 className="text-sm font-bold text-gray-900 dark:text-slate-100">New field note</h3>
+            <div>
+              <label htmlFor="content" className="text-sm font-semibold text-slate-700 dark:text-slate-330">
+                Note
+              </label>
+              <textarea
+                id="content"
+                spellCheck="true"
+                rows={4}
+                placeholder="Document field observations…"
+                className={`mt-1 w-full px-3 py-2 border rounded-md bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 ${
+                  createMethods.formState.errors.content ? 'border-red-500' : ''
+                }`}
+                {...createMethods.register('content')}
+              />
+              {createMethods.formState.errors.content?.message && (
+                <span className="text-xs text-red-500 font-medium">
+                  {String(createMethods.formState.errors.content.message)}
+                </span>
+              )}
+            </div>
+            <button
+              type="submit"
+              disabled={createMutation.isPending}
+              className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold disabled:opacity-50"
+            >
+              {createMutation.isPending ? 'Posting…' : 'Post note'}
+            </button>
+          </form>
+        </FormProvider>
+      )}
 
       {isLoading ? (
         <div className="animate-pulse h-24 bg-slate-100 dark:bg-slate-800 rounded-xl" />
@@ -210,6 +225,7 @@ export default function NotesTab({ projectId }: NotesTabProps) {
               key={note.id}
               note={note}
               currentUserId={currentUserId}
+              isArchived={isArchived}
               onEdit={() => {
                 setEditingNote(note);
                 setEditContent(note.content);
@@ -243,7 +259,7 @@ export default function NotesTab({ projectId }: NotesTabProps) {
             className="space-y-4"
           >
             <div>
-              <label className="text-xs font-bold text-slate-500 uppercase">Content</label>
+              <label className="text-xs font-bold text-slate-505 uppercase">Content</label>
               <textarea
                 spellCheck="true"
                 required
@@ -253,13 +269,15 @@ export default function NotesTab({ projectId }: NotesTabProps) {
                 className="mt-1 w-full px-3 py-2 border rounded-md dark:bg-slate-800 dark:border-slate-700 text-sm"
               />
             </div>
-            <button
-              type="submit"
-              disabled={updateMutation.isPending}
-              className="w-full py-2 rounded-lg bg-sky-600 text-white font-bold text-sm disabled:opacity-50"
-            >
-              {updateMutation.isPending ? 'Saving…' : 'Save changes'}
-            </button>
+            {!isArchived && (
+              <button
+                type="submit"
+                disabled={updateMutation.isPending}
+                className="w-full py-2 rounded-lg bg-sky-600 text-white font-bold text-sm disabled:opacity-50"
+              >
+                {updateMutation.isPending ? 'Saving…' : 'Save changes'}
+              </button>
+            )}
           </form>
         )}
       </Dialog>

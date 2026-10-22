@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE projects\n        SET status = CASE\n            WHEN status = 'DRAFT'::project_status THEN 'DRAFT'::project_status\n            WHEN EXISTS(SELECT 1 FROM tasks WHERE project_id = $1)\n                AND NOT EXISTS(SELECT 1 FROM tasks WHERE project_id = $1 AND status <> 'COMPLETED')\n                THEN 'COMPLETED'::project_status\n            WHEN EXISTS(SELECT 1 FROM tasks WHERE project_id = $1 AND status IN ('IN_PROGRESS', 'COMPLETED'))\n                THEN 'IN_PROGRESS'::project_status\n            ELSE 'PLANNING'::project_status\n        END\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c5bd105ffef7b9a0e484d20832cb90bf22ef3b15af2eef75a53a958b0dfa3f6d"
+}

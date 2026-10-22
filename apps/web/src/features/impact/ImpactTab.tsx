@@ -31,13 +31,13 @@ function ImpactProgressBar({
 
   return (
     <div
-      className={`bg-white dark:bg-[#0B1220] rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm space-y-4 hover:border-blue-300 dark:hover:border-blue-900 transition-all ${
+      className={`bg-white dark:bg-[#0B1220] rounded-xl border-0 dark:border dark:border-slate-800 p-5 shadow-md dark:shadow-none space-y-4 hover:shadow-lg dark:hover:shadow-none transition-all ${
         metric.is_manual_override ? 'ring-2 ring-amber-450/40 dark:ring-amber-500/20' : ''
       }`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1">
-          <h3 className="text-sm font-extrabold text-slate-800 dark:text-white line-clamp-1">
+          <h3 className="text-sm font-extrabold text-gray-900 dark:text-white line-clamp-1">
             {metric.display_name}
           </h3>
           <span className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
@@ -101,7 +101,8 @@ export default function ImpactTab({ projectId }: ImpactTabProps) {
     enabled: !!projectId,
   });
 
-  const canEdit = canEditImpactMetrics(claims?.role) && project?.status !== 'COMPLETED';
+  const isArchived = project?.status === 'COMPLETED' || (project?.status as string) === 'Archived';
+  const canEdit = canEditImpactMetrics(claims?.role) && !isArchived;
   
   // Dialog State: Edit Current Value
   const [editingMetric, setEditingMetric] = useState<ProjectImpactMetricResponse | null>(null);
@@ -185,7 +186,7 @@ export default function ImpactTab({ projectId }: ImpactTabProps) {
       {/* Tab header bar */}
       <div className="flex justify-between items-center pb-4 border-b border-slate-200 dark:border-slate-800">
         <div>
-          <h2 className="text-lg font-extrabold text-slate-900 dark:text-white">Impact Analytics</h2>
+          <h2 className="text-lg font-extrabold text-gray-900 dark:text-white">Impact Analytics</h2>
           <p className="text-xs text-slate-500 dark:text-slate-400">Track and log key performance indicators against global templates</p>
         </div>
         {canEdit && (
@@ -200,10 +201,10 @@ export default function ImpactTab({ projectId }: ImpactTabProps) {
       </div>
 
       {metrics.length === 0 ? (
-        <div className="bg-white dark:bg-[#0B1220] border border-slate-200 dark:border-slate-800 rounded-xl p-12 text-center max-w-2xl mx-auto space-y-4">
-          <Activity className="w-10 h-10 text-slate-300 dark:text-slate-650 mx-auto" />
+        <div className="bg-white dark:bg-[#0B1220] border-0 dark:border dark:border-slate-800 rounded-xl p-12 text-center max-w-2xl mx-auto space-y-4 shadow-md dark:shadow-none">
+          <Activity className="w-10 h-10 text-slate-300 dark:text-slate-655 mx-auto" />
           <div>
-            <h3 className="text-sm font-bold text-slate-800 dark:text-white">No Impact Metrics Configured</h3>
+            <h3 className="text-sm font-bold text-gray-900 dark:text-white">No Impact Metrics Configured</h3>
             <p className="text-xs text-slate-550 dark:text-slate-400 mt-1">Assign metric templates to this initiative to monitor progress against outcomes.</p>
           </div>
           {canEdit && (

@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO distribution_ledger (id, beneficiary_id, project_id, asset_id, quantity, issued_by_user_id, issued_at)\n        VALUES ($1, $2, $3, $4, $5, $6, $7)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar",
+        "Uuid",
+        "Uuid",
+        "Int4",
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "868dc62e66973bf379bbe6879dded09cf945e986302e739b5432f5066740b883"
+}

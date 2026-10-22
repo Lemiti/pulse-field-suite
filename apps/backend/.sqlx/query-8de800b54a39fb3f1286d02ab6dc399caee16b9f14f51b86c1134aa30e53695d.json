@@ -1,0 +1,27 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE tasks \n        SET status = $1, updated_at = CURRENT_TIMESTAMP\n        WHERE id = $2\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        {
+          "Custom": {
+            "name": "task_status",
+            "kind": {
+              "Enum": [
+                "PLAN",
+                "IN_PROGRESS",
+                "COMPLETED",
+                "ANALYSIS"
+              ]
+            }
+          }
+        },
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8de800b54a39fb3f1286d02ab6dc399caee16b9f14f51b86c1134aa30e53695d"
+}

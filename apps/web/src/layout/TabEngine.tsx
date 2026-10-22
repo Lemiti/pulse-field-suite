@@ -29,7 +29,11 @@ export default function TabEngine() {
 
   const isSingleProject = /^\/projects\/[a-zA-Z0-9-]+$/.test(path);
 
-  if (isSingleProject) {
+  if (['/logistics', '/audit-logs'].some((p) => path === p || path.startsWith(p + '/'))) {
+    activeTabs = [];
+  } else if (path === '/beneficiaries') {
+    activeTabs = ['Summary Overview', 'Directory'];
+  } else if (isSingleProject) {
     activeTabs = projectTabs;
   } else if (path === '/projects') {
     activeTabs = projectDirectoryTabs;
@@ -37,6 +41,10 @@ export default function TabEngine() {
     activeTabs = inboxTabs;
   } else if (path === '/settings') {
     activeTabs = settingsTabs;
+  }
+
+  if (activeTabs.length === 0) {
+    return null;
   }
 
   const searchParams = new URLSearchParams(location.search);

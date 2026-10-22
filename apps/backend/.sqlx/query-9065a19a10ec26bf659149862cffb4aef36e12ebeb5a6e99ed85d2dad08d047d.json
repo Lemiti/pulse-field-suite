@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE beneficiaries\n        SET id = $1, is_pending = false\n        WHERE id = $2\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9065a19a10ec26bf659149862cffb4aef36e12ebeb5a6e99ed85d2dad08d047d"
+}

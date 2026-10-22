@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO alerts (project_id, message, severity, dismissed)\n            VALUES ($1, $2, 'high', FALSE)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f93d9d92548d3a059a850e15f247d47144947442e8c202e0702d05bb0cbc1a52"
+}

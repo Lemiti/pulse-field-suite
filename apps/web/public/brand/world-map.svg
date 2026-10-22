@@ -1,0 +1,113 @@
+<svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg" width="1200" height="800" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <style>
+      @keyframes float {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-10px); }
+      }
+      @keyframes pulse-glow {
+        0%, 100% { opacity: 0.6; }
+        50% { opacity: 0.9; }
+      }
+      .continent-dot { 
+        fill: #a8d5ff;
+        animation: pulse-glow 3s ease-in-out infinite;
+      }
+      .map-group {
+        animation: float 6s ease-in-out infinite;
+      }
+    </style>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1200" height="800" fill="transparent"/>
+  
+  <!-- Animated group -->
+  <g class="map-group">
+    <!-- North America -->
+    <circle cx="120" cy="120" r="7" class="continent-dot"/>
+    <circle cx="145" cy="115" r="7" class="continent-dot"/>
+    <circle cx="100" cy="135" r="7" class="continent-dot"/>
+    <circle cx="130" cy="145" r="7" class="continent-dot"/>
+    <circle cx="160" cy="140" r="7" class="continent-dot"/>
+    <circle cx="85" cy="150" r="7" class="continent-dot"/>
+    <circle cx="175" cy="155" r="7" class="continent-dot"/>
+    <circle cx="110" cy="165" r="7" class="continent-dot"/>
+    <circle cx="150" cy="170" r="7" class="continent-dot"/>
+    <circle cx="95" cy="180" r="7" class="continent-dot"/>
+    <circle cx="170" cy="180" r="7" class="continent-dot"/>
+    <circle cx="125" cy="190" r="7" class="continent-dot"/>
+    
+    <!-- South America -->
+    <circle cx="160" cy="350" r="7" class="continent-dot"/>
+    <circle cx="185" cy="375" r="7" class="continent-dot"/>
+    <circle cx="145" cy="390" r="7" class="continent-dot"/>
+    <circle cx="200" cy="410" r="7" class="continent-dot"/>
+    <circle cx="170" cy="430" r="7" class="continent-dot"/>
+    <circle cx="140" cy="450" r="7" class="continent-dot"/>
+    <circle cx="210" cy="470" r="7" class="continent-dot"/>
+    <circle cx="175" cy="490" r="7" class="continent-dot"/>
+    <circle cx="155" cy="510" r="7" class="continent-dot"/>
+    <circle cx="190" cy="520" r="7" class="continent-dot"/>
+    
+    <!-- Europe -->
+    <circle cx="410" cy="110" r="7" class="continent-dot"/>
+    <circle cx="445" cy="120" r="7" class="continent-dot"/>
+    <circle cx="380" cy="130" r="7" class="continent-dot"/>
+    <circle cx="470" cy="115" r="7" class="continent-dot"/>
+    <circle cx="425" cy="145" r="7" class="continent-dot"/>
+    <circle cx="395" cy="155" r="7" class="continent-dot"/>
+    <circle cx="455" cy="150" r="7" class="continent-dot"/>
+    
+    <!-- Africa -->
+    <circle cx="420" cy="280" r="7" class="continent-dot"/>
+    <circle cx="465" cy="300" r="7" class="continent-dot"/>
+    <circle cx="395" cy="320" r="7" class="continent-dot"/>
+    <circle cx="490" cy="340" r="7" class="continent-dot"/>
+    <circle cx="445" cy="360" r="7" class="continent-dot"/>
+    <circle cx="380" cy="380" r="7" class="continent-dot"/>
+    <circle cx="475" cy="400" r="7" class="continent-dot"/>
+    <circle cx="420" cy="420" r="7" class="continent-dot"/>
+    <circle cx="510" cy="380" r="7" class="continent-dot"/>
+    <circle cx="485" cy="440" r="7" class="continent-dot"/>
+    <circle cx="410" cy="460" r="7" class="continent-dot"/>
+    <circle cx="455" cy="480" r="7" class="continent-dot"/>
+    <circle cx="440" cy="510" r="7" class="continent-dot"/>
+    
+    <!-- Europe/Middle East -->
+    <circle cx="490" cy="260" r="7" class="continent-dot"/>
+    <circle cx="520" cy="270" r="7" class="continent-dot"/>
+    <circle cx="550" cy="280" r="7" class="continent-dot"/>
+    
+    <!-- Asia -->
+    <circle cx="620" cy="140" r="7" class="continent-dot"/>
+    <circle cx="680" cy="160" r="7" class="continent-dot"/>
+    <circle cx="650" cy="180" r="7" class="continent-dot"/>
+    <circle cx="720" cy="170" r="7" class="continent-dot"/>
+    <circle cx="640" cy="220" r="7" class="continent-dot"/>
+    <circle cx="700" cy="240" r="7" class="continent-dot"/>
+    <circle cx="660" cy="260" r="7" class="continent-dot"/>
+    <circle cx="750" cy="220" r="7" class="continent-dot"/>
+    <circle cx="800" cy="200" r="7" class="continent-dot"/>
+    <circle cx="840" cy="240" r="7" class="continent-dot"/>
+    <circle cx="780" cy="280" r="7" class="continent-dot"/>
+    <circle cx="820" cy="320" r="7" class="continent-dot"/>
+    <circle cx="760" cy="340" r="7" class="continent-dot"/>
+    
+    <!-- Southeast Asia -->
+    <circle cx="750" cy="360" r="7" class="continent-dot"/>
+    <circle cx="780" cy="380" r="7" class="continent-dot"/>
+    <circle cx="810" cy="390" r="7" class="continent-dot"/>
+    <circle cx="770" cy="410" r="7" class="continent-dot"/>
+    
+    <!-- Australia -->
+    <circle cx="800" cy="550" r="7" class="continent-dot"/>
+    <circle cx="835" cy="570" r="7" class="continent-dot"/>
+    <circle cx="820" cy="590" r="7" class="continent-dot"/>
+    <circle cx="785" cy="600" r="7" class="continent-dot"/>
+    
+    <!-- New Zealand -->
+    <circle cx="900" cy="630" r="7" class="continent-dot"/>
+    <circle cx="920" cy="645" r="7" class="continent-dot"/>
+  </g>
+</svg>

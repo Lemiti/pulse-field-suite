@@ -182,7 +182,7 @@ export default function Inbox() {
         />
       )}
       {activeTab === 'Messages' && !selectedChannelId && (
-        <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+        <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-lg border-0 dark:border dark:border-slate-700 shadow-md dark:shadow-none">
           <p className="text-slate-500 dark:text-slate-400">
             No projects available for chat channels.
           </p>
@@ -191,8 +191,8 @@ export default function Inbox() {
 
       {/* Fallback for unknown tabs */}
       {activeTab !== 'Unread' && activeTab !== 'Messages' && (
-        <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-8 text-center">
-          <p className="text-slate-600 dark:text-slate-300">
+        <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-8 text-center shadow-md dark:shadow-none">
+          <p className="text-slate-650 dark:text-slate-350">
             Content for tab "{activeTab}" not yet available.
           </p>
         </div>
@@ -344,7 +344,7 @@ function NotificationCard({ notification, icon, relativeTime, isUnread }: Notifi
         <h3
           className={`font-semibold text-sm ${
             isUnread
-              ? 'text-slate-900 dark:text-white'
+              ? 'text-gray-900 dark:text-white'
               : 'text-slate-700 dark:text-slate-300'
           }`}
         >
@@ -436,9 +436,9 @@ function MessagesTab({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 h-[70vh]">
       {/* ============= SIDEBAR: CHANNEL SELECT (Hidden on mobile, visible on desktop) ============= */}
-      <div className="hidden lg:flex flex-col bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+      <div className="hidden lg:flex flex-col bg-white dark:bg-slate-800 rounded-lg border-0 dark:border dark:border-slate-700 overflow-hidden shadow-md dark:shadow-none">
         <div className="p-4 border-b border-slate-200 dark:border-slate-700">
-          <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+          <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">
             Channels
           </h3>
         </div>
@@ -451,7 +451,7 @@ function MessagesTab({
               className={`w-full text-left px-4 py-3 border-l-2 transition-colors ${
                 selectedChannelId === channel.id
                   ? 'border-l-blue-600 dark:border-l-blue-400 bg-blue-50 dark:bg-blue-900/20 text-blue-900 dark:text-blue-100'
-                  : 'border-l-transparent hover:bg-slate-50 dark:hover:bg-slate-700/50 text-slate-900 dark:text-slate-100'
+                  : 'border-l-transparent hover:bg-slate-50 dark:hover:bg-slate-700/50 text-gray-900 dark:text-slate-100'
               }`}
             >
               <div className="flex items-center justify-between gap-2">
@@ -470,13 +470,13 @@ function MessagesTab({
       </div>
 
       {/* ============= MAIN CHAT AREA ============= */}
-      <div className="lg:col-span-3 flex flex-col bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+      <div className="lg:col-span-3 flex flex-col bg-white dark:bg-slate-800 rounded-lg border-0 dark:border dark:border-slate-700 overflow-hidden shadow-md dark:shadow-none">
         {/* ============= CHAT HEADER ============= */}
         <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
           <div className="flex items-center gap-3">
             <MessageCircle className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             <div>
-              <h2 className="font-bold text-slate-900 dark:text-white">
+              <h2 className="font-bold text-gray-900 dark:text-white">
                 {selectedChannel.name}
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">

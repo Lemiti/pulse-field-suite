@@ -42,7 +42,7 @@
 
 @layer components {
   .ui-panel {
-    @apply rounded-[8px] border border-slate-200/80 bg-white shadow-sm shadow-slate-200/30 dark:border-slate-800 dark:bg-slate-900 dark:shadow-none;
+    @apply rounded-xl border-0 bg-white shadow-md shadow-slate-200/40 dark:border dark:border-slate-800 dark:bg-slate-900 dark:shadow-none;
   }
 
   .ui-button-primary {

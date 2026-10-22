@@ -1,0 +1,38 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, name, type, country_id\n        FROM partners\n        ORDER BY name ASC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "country_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "f91329590fd6ce9091492c95bb8bf1b44eabc040a59b27381fdadb160e9d9d2f"
+}

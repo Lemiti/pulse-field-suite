@@ -1,0 +1,359 @@
+/* ================================================================
+   ENA LANDING PAGE — SELF-CONTAINED STYLESHEET
+   Drop this file into your project and import it in your component
+   or at the top of your global CSS file.
+   ================================================================ */
+
+/* ── FONTS ───────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Georgia&display=swap');
+
+/* ── DESIGN TOKENS (CSS Variables) ───────────────────────────── */
+:root {
+  /* Brand Blue */
+  --ena-primary:        #1273de;
+  --ena-primary-dark:   #0f60c2;
+  --ena-primary-light:  #e8f1fd;
+  --ena-primary-hover:  #0d55ad;
+
+  /* Neutrals */
+  --ena-slate-50:   #f8fafc;
+  --ena-slate-100:  #f1f5f9;
+  --ena-slate-200:  #e2e8f0;
+  --ena-slate-300:  #cbd5e1;
+  --ena-slate-400:  #94a3b8;
+  --ena-slate-500:  #64748b;
+  --ena-slate-600:  #475569;
+  --ena-slate-700:  #334155;
+  --ena-slate-800:  #1e293b;
+  --ena-slate-900:  #0f172a;
+
+  /* White */
+  --ena-white: #ffffff;
+
+  /* Spacing */
+  --ena-section-py: 6rem;
+  --ena-container-max: 1400px;
+
+  /* Radius */
+  --ena-radius-sm:  0.5rem;
+  --ena-radius-md:  0.75rem;
+  --ena-radius-lg:  1rem;
+  --ena-radius-xl:  1.5rem;
+  --ena-radius-2xl: 2rem;
+
+  /* Shadows */
+  --ena-shadow-sm:  0 1px 2px rgba(0,0,0,0.05);
+  --ena-shadow-md:  0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -1px rgba(0,0,0,0.04);
+  --ena-shadow-lg:  0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -2px rgba(0,0,0,0.04);
+  --ena-shadow-xl:  0 20px 25px -5px rgba(0,0,0,0.10), 0 10px 10px -5px rgba(0,0,0,0.04);
+}
+
+/* ── ANIMATIONS ───────────────────────────────────────────────── */
+@keyframes ena-float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-15px); }
+}
+
+@keyframes ena-pulse-opacity {
+  0%, 100% { opacity: 0.15; }
+  50%       { opacity: 0.30; }
+}
+
+@keyframes ena-scale-hover {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.05); }
+}
+
+@keyframes ena-marquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes ena-fade-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── UTILITY CLASSES ──────────────────────────────────────────── */
+
+/* Base wrapper resets */
+.ena-landing {
+  min-height: 100vh;
+  background-color: var(--ena-white);
+  color: var(--ena-slate-900);
+  font-family: 'Outfit', sans-serif;
+  overflow-x: hidden;
+}
+
+/* Container */
+.ena-container {
+  max-width: var(--ena-container-max);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+/* Animated floating map background section */
+.ena-section-with-bg {
+  position: relative;
+  background-image: url(/brand/world-map.svg);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 50%;
+  background-attachment: fixed;
+}
+
+.ena-section-with-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.85);
+  z-index: 1;
+}
+
+/* Animated map */
+.ena-animated-map {
+  animation: ena-float 8s ease-in-out infinite,
+             ena-pulse-opacity 6s ease-in-out infinite;
+}
+
+/* Marquee strip */
+.ena-marquee-track {
+  display: flex;
+  align-items: center;
+  width: max-content;
+  animation: ena-marquee 36s linear infinite;
+}
+
+.ena-marquee-wrapper {
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+  padding: 1.5rem 0;
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    black 12%,
+    black 88%,
+    transparent 100%
+  );
+}
+
+/* Collage image hover */
+.ena-collage-image {
+  transition: transform 0.3s ease-in-out;
+  cursor: pointer;
+}
+.ena-collage-image:hover {
+  transform: scale(1.08) translateY(-10px);
+}
+
+/* Program card image zoom on hover */
+.ena-program-card img {
+  transition: transform 0.5s ease;
+}
+.ena-program-card:hover img {
+  transform: scale(1.05);
+}
+
+/* Government partner list item */
+.ena-gov-item {
+  display: flex;
+  align-items: stretch;
+}
+.ena-gov-item .ena-accent-bar {
+  width: 2px;
+  background: var(--ena-slate-200);
+  margin-right: 1.25rem;
+  flex-shrink: 0;
+  transition: background 0.3s;
+}
+.ena-gov-item:hover .ena-accent-bar {
+  background: var(--ena-primary);
+}
+
+/* Fade in animation helper */
+.ena-fade-in {
+  animation: ena-fade-in 0.6s ease-out both;
+}
+
+/* Gradient top shimmer (for footer) */
+.ena-footer-shimmer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #3b82f6, #6366f1, #10b981);
+  opacity: 0.6;
+}
+
+/* ── TYPOGRAPHY SCALE ─────────────────────────────────────────── */
+.ena-h1 {
+  font-size: clamp(2.5rem, 6vw, 4.5rem);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--ena-slate-900);
+}
+
+.ena-h2 {
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--ena-slate-900);
+}
+
+.ena-h3 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--ena-slate-900);
+}
+
+.ena-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ena-primary);
+}
+
+/* ── BUTTONS ──────────────────────────────────────────────────── */
+.ena-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ena-primary);
+  color: var(--ena-white);
+  font-weight: 700;
+  font-size: 0.875rem;
+  padding: 0.75rem 1.75rem;
+  border-radius: var(--ena-radius-lg);
+  border: none;
+  cursor: pointer;
+  box-shadow: var(--ena-shadow-md);
+  transition: background 0.2s, box-shadow 0.2s, transform 0.15s;
+}
+.ena-btn-primary:hover {
+  background: var(--ena-primary-dark);
+  box-shadow: var(--ena-shadow-lg);
+}
+
+.ena-btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ena-white);
+  color: var(--ena-slate-700);
+  font-weight: 700;
+  font-size: 0.875rem;
+  padding: 0.75rem 1.75rem;
+  border-radius: var(--ena-radius-lg);
+  border: 1px solid var(--ena-slate-200);
+  cursor: pointer;
+  box-shadow: var(--ena-shadow-sm);
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.ena-btn-outline:hover {
+  background: var(--ena-slate-50);
+  box-shadow: var(--ena-shadow-md);
+}
+
+/* ── STAT CARDS ───────────────────────────────────────────────── */
+.ena-stat-card {
+  padding: 2rem;
+  border-radius: var(--ena-radius-xl);
+  background: rgba(255,255,255,0.7);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.8);
+  box-shadow: var(--ena-shadow-sm);
+  text-align: center;
+}
+
+.ena-stat-number {
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 900;
+  color: var(--ena-primary);
+  line-height: 1;
+}
+
+/* ── NAV ──────────────────────────────────────────────────────── */
+.ena-nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--ena-slate-100);
+  transition: all 0.3s;
+}
+
+.ena-nav-link {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ena-slate-600);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.ena-nav-link:hover {
+  color: var(--ena-primary);
+}
+
+/* ── ADDITIONAL HIGHLIGHT ANIMATIONS ───────────────────────────── */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-15px); }
+}
+@keyframes pulse-opacity {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.3; }
+}
+@keyframes scale-hover {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+.animated-map {
+  animation: float 8s ease-in-out infinite, pulse-opacity 6s ease-in-out infinite;
+}
+.section-with-bg {
+  position: relative;
+  background-image: url(/brand/world-map.svg);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 50%;
+  background-attachment: fixed;
+}
+.section-with-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url(/brand/world-map.svg);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 50%;
+  opacity: 0.15;
+  pointer-events: none;
+  animation: float 8s ease-in-out infinite, pulse-opacity 6s ease-in-out infinite;
+}
+.interactive-card {
+  position: relative;
+  z-index: 1;
+}
+.interactive-card:hover {
+  animation: scale-hover 0.6s ease-in-out;
+}
+.collage-image {
+  transition: all 0.3s ease-in-out;
+  cursor: pointer;
+  background: transparent !important;
+  padding: 0 !important;
+  border: none !important;
+}
+.collage-image:hover {
+  transform: scale(1.08) translateY(-10px);
+}

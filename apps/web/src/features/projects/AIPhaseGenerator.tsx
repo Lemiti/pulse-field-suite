@@ -266,10 +266,10 @@ export default function AIPhaseGenerator({
   // ============= RENDER: TRIGGER STATE =============
   if (generatorState === 'trigger') {
     return (
-      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 p-6">
+      <div className="rounded-xl border-0 dark:border dark:border-slate-700 bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800 p-6 shadow-md dark:shadow-none">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
               ✨ Generate Project Phases with AI
             </h3>
             <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
@@ -311,7 +311,7 @@ export default function AIPhaseGenerator({
   // ============= RENDER: LOADING STATE =============
   if (generatorState === 'loading') {
     return (
-      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-6">
+      <div className="rounded-xl border-0 dark:border dark:border-slate-700 bg-white dark:bg-slate-900 p-6 shadow-md dark:shadow-none">
         <div className="flex items-center justify-center gap-4 mb-8">
           <div className="relative w-12 h-12">
             <div className="absolute inset-0 bg-blue-600/20 rounded-full animate-pulse" />
@@ -320,7 +320,7 @@ export default function AIPhaseGenerator({
             </div>
           </div>
           <div>
-            <p className="font-semibold text-slate-900 dark:text-white">
+            <p className="font-semibold text-gray-900 dark:text-white">
               Analyzing your project...
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -336,7 +336,7 @@ export default function AIPhaseGenerator({
   // ============= RENDER: EMPTY STATE =============
   if (generatorState === 'review' && suggestedPhases.length === 0) {
     return (
-      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-6 text-center">
+      <div className="rounded-xl border-0 dark:border dark:border-slate-700 bg-white dark:bg-slate-900 p-6 shadow-md dark:shadow-none text-center">
         <p className="text-slate-600 dark:text-slate-400 mb-4">
           No phases were generated. Please try again with more project details.
         </p>
@@ -354,11 +354,11 @@ export default function AIPhaseGenerator({
   // ============= RENDER: REVIEW STATE =============
   if (generatorState === 'review') {
     return (
-      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-6 space-y-4">
+      <div className="rounded-xl border-0 dark:border dark:border-slate-700 bg-white dark:bg-slate-900 p-6 shadow-md dark:shadow-none space-y-4">
         {/* HEADER */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
               Review & Customize Phases
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">

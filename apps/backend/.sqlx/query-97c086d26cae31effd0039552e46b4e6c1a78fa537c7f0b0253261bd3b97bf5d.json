@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            p.id as project_id,\n            p.name as project_name,\n            p.budget_allocated as \"budget_allocated!\",\n            p.budget_spent as \"budget_spent!\"\n        FROM projects p\n        WHERE p.country_id = $1\n        ORDER BY p.name ASC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "project_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "project_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "budget_allocated!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 3,
+        "name": "budget_spent!",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "97c086d26cae31effd0039552e46b4e6c1a78fa537c7f0b0253261bd3b97bf5d"
+}

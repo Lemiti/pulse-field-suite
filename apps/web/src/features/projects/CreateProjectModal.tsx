@@ -7,10 +7,11 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api';
 import { useActiveCountry } from '../auth/ActiveCountryContext';
 import { getApiErrorMessage } from '../../lib/errors';
-import { X, Loader2, Plus, Trash2, ArrowLeft, ArrowRight, Save, CloudLightning } from 'lucide-react';
+import { X, Loader2, Plus, Trash2, ArrowLeft, ArrowRight, Save, CloudLightning, ChevronDown, Check } from 'lucide-react';
 import L from 'leaflet';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
+import { toast } from 'sonner';
 
 interface CreateProjectModalProps {
   isOpen: boolean;
@@ -62,6 +63,8 @@ const wizardSchema = z.object({
   total_income: z.preprocess((val) => (val === '' ? undefined : Number(val)), z.number().min(0, 'Must be positive').optional()),
   donor_name: z.string().min(1, 'Donor is required'),
   budget_allocated: z.preprocess((val) => (val === '' ? undefined : Number(val)), z.number().min(0, 'Must be positive').optional()),
+  project_leader_id: z.string().uuid().nullable().optional(),
+  member_ids: z.array(z.string().uuid()).optional(),
   
   sector_type: z.array(z.string()).min(1, 'Select at least one sector type'),
   region: z.string().min(1, 'Region is required'),
@@ -130,6 +133,8 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
       total_income: 0,
       donor_name: '',
       budget_allocated: 0,
+      project_leader_id: null,
+      member_ids: [],
       sector_type: [],
       region: '',
       zone: '',
@@ -155,6 +160,45 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
     control,
     name: 'outcomes_and_indicators',
   });
+
+  // Fetch Field Officers
+  const { data: fieldOfficers = [] } = useQuery<any[]>({
+    queryKey: ['field-officers'],
+    queryFn: async () => {
+      const res = await api.get('/users?role=FIELD_OFFICER');
+      return Array.isArray(res.data) ? res.data : [];
+    },
+    enabled: isOpen,
+  });
+
+  const leaderDropdownRef = useRef<HTMLDivElement>(null);
+  const membersDropdownRef = useRef<HTMLDivElement>(null);
+  const [isLeaderOpen, setIsLeaderOpen] = useState(false);
+  const [isMembersOpen, setIsMembersOpen] = useState(false);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (leaderDropdownRef.current && !leaderDropdownRef.current.contains(event.target as Node)) {
+        setIsLeaderOpen(false);
+      }
+      if (membersDropdownRef.current && !membersDropdownRef.current.contains(event.target as Node)) {
+        setIsMembersOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const leaderId = watch('project_leader_id');
+  const memberIds = watch('member_ids') || [];
+
+  const selectedLeader = fieldOfficers.find((u) => u.id === leaderId);
+  const selectedLeaderName = selectedLeader ? selectedLeader.name : '';
+
+  const selectedMembersNames = fieldOfficers
+    .filter((u) => memberIds.includes(u.id))
+    .map((u) => u.name);
+  const selectedMembersLabel = selectedMembersNames.length > 0 ? selectedMembersNames.join(', ') : '';
 
   // ============= STEP 1 AUTO-SAVE DEBOUNCE EFFECT =============
   const nameValue = watch('name');
@@ -184,6 +228,8 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
           status: 'DRAFT',
           total_income: totalIncomeValue ? Number(totalIncomeValue) : 0,
           donor_name: donorNameValue || null,
+          project_leader_id: methods.getValues('project_leader_id'),
+          member_ids: methods.getValues('member_ids') || [],
         };
 
         if (draftIdRef.current) {
@@ -287,6 +333,8 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
         outcomes_and_indicators: values.outcomes_and_indicators,
         total_income: values.total_income ? Number(values.total_income) : 0,
         donor_name: values.donor_name,
+        project_leader_id: values.project_leader_id,
+        member_ids: values.member_ids || [],
       };
 
       const currentDraftId = draftId || draftIdRef.current;
@@ -308,6 +356,11 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
 
   const onSubmit = (values: WizardFormValues) => {
     finalizeMutation.mutate(values);
+  };
+
+  const onInvalid = (errors: any) => {
+    console.error("Form validation failed:", errors);
+    toast.error("Please fill in all required fields on all steps.");
   };
 
   const handleNextStep = async () => {
@@ -468,7 +521,7 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div>
                       <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 font-sans">
-                        Total Income (USD)
+                        Total Income (ETB)
                       </label>
                       <input
                         type="number"
@@ -506,7 +559,7 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
 
                     <div>
                       <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 font-sans">
-                        Allocated Budget (USD)
+                        Allocated Budget (ETB)
                       </label>
                       <input
                         type="number"
@@ -517,6 +570,113 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
                       />
                       {errors.budget_allocated && (
                         <p className="text-red-500 text-xs mt-1 font-bold">{errors.budget_allocated.message}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* PROJECT LEADER & TEAM ASSIGNMENTS */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                    {/* Project Leader Selection */}
+                    <div className="relative" ref={leaderDropdownRef}>
+                      <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 font-sans">
+                        Project Leader (Field Officer)
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setIsLeaderOpen(!isLeaderOpen)}
+                        className="w-full flex items-center justify-between border border-slate-350 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/55 transition-all text-left"
+                      >
+                        <span className="truncate">
+                          {selectedLeaderName || 'Select Project Leader...'}
+                        </span>
+                        <ChevronDown className="w-4 h-4 opacity-60 ml-2 flex-shrink-0" />
+                      </button>
+                      
+                      {isLeaderOpen && (
+                        <div className="absolute left-0 w-full mt-1.5 z-50 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl overflow-hidden py-1 max-h-60 overflow-y-auto">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setValue('project_leader_id', null, { shouldValidate: true });
+                              setIsLeaderOpen(false);
+                            }}
+                            className="w-full text-left px-4 py-2.5 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800"
+                          >
+                            Unassigned (None)
+                          </button>
+                          {fieldOfficers.length === 0 ? (
+                            <div className="px-4 py-2.5 text-sm text-slate-400 italic">No Field Officers found</div>
+                          ) : (
+                            fieldOfficers.map((user) => (
+                              <button
+                                key={user.id}
+                                type="button"
+                                onClick={() => {
+                                  setValue('project_leader_id', user.id, { shouldValidate: true });
+                                  const nextMembers = memberIds.filter((id: string) => id !== user.id);
+                                  setValue('member_ids', nextMembers, { shouldValidate: true });
+                                  setIsLeaderOpen(false);
+                                }}
+                                className="w-full flex items-center justify-between text-left px-4 py-2.5 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200"
+                              >
+                                <span>{user.name}</span>
+                                {leaderId === user.id && (
+                                  <Check className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                                )}
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Team Members Selection */}
+                    <div className="relative" ref={membersDropdownRef}>
+                      <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 font-sans">
+                        Project Team Members
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setIsMembersOpen(!isMembersOpen)}
+                        className="w-full flex items-center justify-between border border-slate-350 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/55 transition-all text-left"
+                      >
+                        <span className="truncate">
+                          {selectedMembersLabel || 'Select Team Members...'}
+                        </span>
+                        <ChevronDown className="w-4 h-4 opacity-60 ml-2 flex-shrink-0" />
+                      </button>
+
+                      {isMembersOpen && (
+                        <div className="absolute left-0 w-full mt-1.5 z-50 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl overflow-hidden py-1 max-h-60 overflow-y-auto">
+                          {fieldOfficers.length === 0 ? (
+                            <div className="px-4 py-2.5 text-sm text-slate-400 italic">No Field Officers found</div>
+                          ) : (
+                            fieldOfficers
+                              .filter((user) => user.id !== leaderId)
+                              .map((user) => {
+                                const isSelected = memberIds.includes(user.id);
+                              return (
+                                <button
+                                  key={user.id}
+                                  type="button"
+                                  onClick={() => {
+                                    const next = isSelected
+                                      ? memberIds.filter((id: string) => id !== user.id)
+                                      : [...memberIds, user.id];
+                                    setValue('member_ids', next, { shouldValidate: true });
+                                    setIsMembersOpen(false); // Close dropdown on option click to satisfy requirement
+                                  }}
+                                  className="w-full flex items-center justify-between text-left px-4 py-2.5 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200"
+                                >
+                                  <span>{user.name}</span>
+                                  {isSelected && (
+                                    <Check className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                                  )}
+                                </button>
+                              );
+                            })
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -742,33 +902,49 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
                       </button>
                     </div>
 
-                    {riskFields.map((field, idx) => (
-                      <div key={field.id} className="flex gap-4 items-center bg-slate-50 dark:bg-slate-900/30 p-3 rounded-xl border border-slate-100 dark:border-slate-850">
-                        <div className="flex-1">
-                          <input
-                            type="text"
-                            placeholder="Risk description"
-                            {...methods.register(`risks_and_mitigations.${idx}.risk`)}
-                            className="w-full text-xs px-3 py-2 border dark:border-slate-700 rounded-lg dark:bg-slate-800 dark:text-white"
-                          />
+                    {riskFields.map((field, idx) => {
+                      const riskError = errors.risks_and_mitigations?.[idx]?.risk;
+                      const mitigationError = errors.risks_and_mitigations?.[idx]?.mitigation;
+                      return (
+                        <div key={field.id} className="space-y-1">
+                          <div className="flex gap-4 items-center bg-slate-50 dark:bg-slate-900/30 p-3 rounded-xl border border-slate-100 dark:border-slate-850">
+                            <div className="flex-1">
+                              <input
+                                type="text"
+                                placeholder="Risk description"
+                                {...methods.register(`risks_and_mitigations.${idx}.risk`)}
+                                className={`w-full text-xs px-3 py-2 border rounded-lg dark:bg-slate-800 dark:text-white ${
+                                  riskError ? 'border-red-500' : 'dark:border-slate-700'
+                                }`}
+                              />
+                              {riskError?.message && (
+                                <p className="text-[10px] text-red-500 mt-0.5 font-bold">{riskError.message}</p>
+                              )}
+                            </div>
+                            <div className="flex-1">
+                              <input
+                                type="text"
+                                placeholder="Mitigation action"
+                                {...methods.register(`risks_and_mitigations.${idx}.mitigation`)}
+                                className={`w-full text-xs px-3 py-2 border rounded-lg dark:bg-slate-800 dark:text-white ${
+                                  mitigationError ? 'border-red-500' : 'dark:border-slate-700'
+                                }`}
+                              />
+                              {mitigationError?.message && (
+                                <p className="text-[10px] text-red-500 mt-0.5 font-bold">{mitigationError.message}</p>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeRisk(idx)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 cursor-pointer"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex-1">
-                          <input
-                            type="text"
-                            placeholder="Mitigation action"
-                            {...methods.register(`risks_and_mitigations.${idx}.mitigation`)}
-                            className="w-full text-xs px-3 py-2 border dark:border-slate-700 rounded-lg dark:bg-slate-800 dark:text-white"
-                          />
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => removeRisk(idx)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 cursor-pointer"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
 
                   {/* OUTCOMES & INDICATORS ARRAY */}
@@ -787,33 +963,49 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
                       </button>
                     </div>
 
-                    {outcomeFields.map((field, idx) => (
-                      <div key={field.id} className="flex gap-4 items-center bg-slate-50 dark:bg-slate-900/30 p-3 rounded-xl border border-slate-100 dark:border-slate-850">
-                        <div className="flex-1">
-                          <input
-                            type="text"
-                            placeholder="Outcomes (e.g. increase wash access)"
-                            {...methods.register(`outcomes_and_indicators.${idx}.outcome`)}
-                            className="w-full text-xs px-3 py-2 border dark:border-slate-700 rounded-lg dark:bg-slate-800 dark:text-white"
-                          />
+                    {outcomeFields.map((field, idx) => {
+                      const outcomeError = errors.outcomes_and_indicators?.[idx]?.outcome;
+                      const indicatorError = errors.outcomes_and_indicators?.[idx]?.indicator;
+                      return (
+                        <div key={field.id} className="space-y-1">
+                          <div className="flex gap-4 items-center bg-slate-50 dark:bg-slate-900/30 p-3 rounded-xl border border-slate-100 dark:border-slate-850">
+                            <div className="flex-1">
+                              <input
+                                type="text"
+                                placeholder="Outcomes (e.g. increase wash access)"
+                                {...methods.register(`outcomes_and_indicators.${idx}.outcome`)}
+                                className={`w-full text-xs px-3 py-2 border rounded-lg dark:bg-slate-800 dark:text-white ${
+                                  outcomeError ? 'border-red-500' : 'dark:border-slate-700'
+                                }`}
+                              />
+                              {outcomeError?.message && (
+                                <p className="text-[10px] text-red-500 mt-0.5 font-bold">{outcomeError.message}</p>
+                              )}
+                            </div>
+                            <div className="flex-1">
+                              <input
+                                type="text"
+                                placeholder="Indicators (e.g. 5 wells built)"
+                                {...methods.register(`outcomes_and_indicators.${idx}.indicator`)}
+                                className={`w-full text-xs px-3 py-2 border rounded-lg dark:bg-slate-800 dark:text-white ${
+                                  indicatorError ? 'border-red-500' : 'dark:border-slate-700'
+                                }`}
+                              />
+                              {indicatorError?.message && (
+                                <p className="text-[10px] text-red-500 mt-0.5 font-bold">{indicatorError.message}</p>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeOutcome(idx)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 cursor-pointer"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex-1">
-                          <input
-                            type="text"
-                            placeholder="Indicators (e.g. 5 wells built)"
-                            {...methods.register(`outcomes_and_indicators.${idx}.indicator`)}
-                            className="w-full text-xs px-3 py-2 border dark:border-slate-700 rounded-lg dark:bg-slate-800 dark:text-white"
-                          />
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => removeOutcome(idx)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 cursor-pointer"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -866,7 +1058,7 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
               <button
                 type="button"
                 disabled={finalizeMutation.isPending}
-                onClick={handleSubmit(onSubmit as any)}
+                onClick={handleSubmit(onSubmit as any, onInvalid as any)}
                 className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors disabled:opacity-50 cursor-pointer"
               >
                 {finalizeMutation.isPending ? (

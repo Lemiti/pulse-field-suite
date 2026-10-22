@@ -11,10 +11,6 @@ use std::env;
 use std::net::SocketAddr;
 use ts_rs::TS;
 use crate::api::projects::{
-    get_projects, get_project, create_project, update_project_budget, get_project_stats,
-    // Phase 2: Notes & Messages Handlers
-    get_project_notes, create_project_note, update_project_note,
-    get_project_messages, create_project_message,
     get_project_phases, create_project_phase,
 };
 
@@ -73,6 +69,7 @@ async fn main() {
         api::auth::ChangePasswordRequest::export().unwrap();
         api::auth::LoginResponse::export().unwrap();
         api::auth::CurrentUserResponse::export().unwrap();
+        api::auth::UpdateProfileRequest::export().unwrap();
         api::tasks::UpdateTaskPhaseRequest::export().unwrap();
         models::GlobalMetrics::export().unwrap();
         models::ActionItem::export().unwrap();
@@ -88,8 +85,18 @@ async fn main() {
         api::partners::ProjectPartnerInput::export().unwrap();
         api::partners::UpdateProjectPartnersRequest::export().unwrap();
         models::CountryResponse::export().unwrap();
+        api::auth::UserResponse::export().unwrap();
 
-
+        models::AssetResponse::export().unwrap();
+        models::CreateAssetRequest::export().unwrap();
+        models::PipelineResponse::export().unwrap();
+        models::CreatePipelineRequest::export().unwrap();
+        api::search::SearchItem::export().unwrap();
+        models::BeneficiaryDependent::export().unwrap();
+        models::DistributionLedgerEntry::export().unwrap();
+        models::BeneficiaryResponse::export().unwrap();
+        models::CreateBeneficiaryRequest::export().unwrap();
+        models::CreateDistributionRequest::export().unwrap();
 
         let index_content = r#"
 export * from './TaskStatus';
@@ -138,6 +145,7 @@ export * from './LoginRequest';
 export * from './ChangePasswordRequest';
 export * from './LoginResponse';
 export * from './CurrentUserResponse';
+export * from './UpdateProfileRequest';
 export * from './UpdateTaskPhaseRequest';
 export * from './GlobalMetrics';
 export * from './ActionItem';
@@ -152,6 +160,17 @@ export * from './ProjectPartnerResponse';
 export * from './ProjectPartnerInput';
 export * from './UpdateProjectPartnersRequest';
 export * from './CountryResponse';
+export * from './UserResponse';
+export * from './AssetResponse';
+export * from './CreateAssetRequest';
+export * from './PipelineResponse';
+export * from './CreatePipelineRequest';
+export * from './SearchItem';
+export * from './BeneficiaryDependent';
+export * from './DistributionLedgerEntry';
+export * from './BeneficiaryResponse';
+export * from './CreateBeneficiaryRequest';
+export * from './CreateDistributionRequest';
 "#;
         std::fs::write("../../packages/shared-types/src/index.ts", index_content.trim())
             .expect("Failed to write index.ts");
@@ -169,6 +188,13 @@ export * from './CountryResponse';
 
     tracing::info!("✅ Connected to Database");
 
+    // Run database migrations on startup
+    sqlx::migrate!("./migrations")
+        .run(&pool)
+        .await
+        .expect("Failed to run database migrations");
+    tracing::info!("✅ Database migrations applied successfully");
+
     // Spawn the Webhook background worker
     let worker_pool = pool.clone();
     tokio::spawn(async move {
@@ -176,13 +202,14 @@ export * from './CountryResponse';
     });
 
     // 3. Build Axum Router
-    let app = Router::new()
+    let mut app = Router::new()
         .route("/api/health", get(|| async { "Pulse-Field API is online!" }))
         .route("/api/auth/mock-login", get(api::auth::mock_login))
         .route("/api/auth/signup", post(api::auth::signup))
         .route("/api/auth/login", post(api::auth::login))
         .route("/api/auth/change-password", post(api::auth::change_password))
-        .route("/api/users/me", get(api::auth::get_current_user))
+        .route("/api/users/me", get(api::auth::get_current_user).put(api::auth::update_current_user))
+        .route("/api/users", get(api::auth::get_users))
         // 🚀 NEW SECURE ROUTES:
         .route("/api/dashboard/summary", get(api::dashboard::get_dashboard_summary))
         .route("/api/projects", get(api::projects::get_projects))
@@ -204,6 +231,7 @@ export * from './CountryResponse';
         .route("/api/media/confirm", post(api::media::confirm_upload))
         .route("/api/projects/:project_id/media", get(api::media::get_project_media).post(api::media::create_project_media))
         .route("/api/projects/:project_id/media/:media_id", delete(api::media::delete_project_media))
+        .route("/api/projects/:project_id/files", post(api::media::upload_project_file))
 	    .route("/api/projects/:project_id/budget", patch(api::projects::update_project_budget))
         .route("/api/projects/:project_id/alerts", get(api::alerts::get_alerts))
         .route("/api/alerts", get(api::alerts::get_global_alerts))
@@ -229,8 +257,32 @@ export * from './CountryResponse';
 
         // Country endpoints
         .route("/api/countries/:country_id", get(api::countries::get_country))
+        
+        // Logistics endpoints
+        .route("/api/logistics/assets", get(api::logistics::get_assets).post(api::logistics::create_asset))
+        .route("/api/logistics/pipelines", get(api::logistics::get_pipelines).post(api::logistics::create_pipeline))
+        .route("/api/search", get(api::search::global_search))
+        .route("/api/beneficiaries", get(api::beneficiaries::get_beneficiaries).post(api::beneficiaries::create_beneficiary))
+        .route("/api/beneficiaries/:id", delete(api::beneficiaries::delete_beneficiary))
+        .route("/api/beneficiaries/:id/approve", post(api::beneficiaries::approve_beneficiary))
+        .route("/api/beneficiaries/:id/reject", post(api::beneficiaries::reject_beneficiary))
+        .route("/api/beneficiaries/:id/link-project", post(api::beneficiaries::link_project))
+        .route("/api/beneficiaries/:id/unlink-project", post(api::beneficiaries::unlink_project))
+        .route("/api/distributions", post(api::beneficiaries::create_distribution));
 
+    // Serve static files in production mode when env var APP_ENV/ENV is set to "production"
+    let is_production = env::var("APP_ENV").unwrap_or_default() == "production"
+        || env::var("ENV").unwrap_or_default() == "production";
 
+    if is_production {
+        let static_dir = env::var("STATIC_DIR").unwrap_or_else(|_| "apps/web/dist".to_string());
+        tracing::info!("Serving static files from {}", static_dir);
+        let serve_dir = tower_http::services::ServeDir::new(&static_dir)
+            .fallback(tower_http::services::ServeFile::new(format!("{}/index.html", static_dir)));
+        app = app.fallback_service(serve_dir);
+    }
+
+    let app = app
         .layer(axum::middleware::from_fn(error_json_middleware))
         .layer(axum::middleware::from_fn(cors_middleware))
         .with_state(pool);
@@ -238,14 +290,19 @@ export * from './CountryResponse';
 
 
     // 4. Start Server
-    let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
+    let host_str = env::var("HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
+    let port_str = env::var("PORT").unwrap_or_else(|_| "8080".to_string());
+    let addr_str = format!("{}:{}", host_str, port_str);
+    let addr: SocketAddr = addr_str.parse().unwrap_or_else(|_| {
+        SocketAddr::from(([0, 0, 0, 0], 8080))
+    });
     tracing::info!("🚀 Server running on http://{}", addr);
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }
 
 use axum::{
-    http::{HeaderValue, Method, Request, Response, StatusCode},
+    http::{HeaderValue, Method, Request, StatusCode},
     middleware::Next,
     response::IntoResponse,
 };

@@ -1,7 +1,7 @@
 // apps/backend/src/api/auth.rs
 use axum::{
     async_trait,
-    extract::{FromRequestParts, Query, State, Path},
+    extract::{FromRequestParts, Query, State},
     http::{request::Parts, StatusCode},
     Json,
 };
@@ -392,6 +392,11 @@ pub struct CurrentUserResponse {
     pub role: String,
     pub country_id: Uuid,
     pub country_name: String,
+    pub phone: Option<String>,
+    pub bio: Option<String>,
+    pub focus_area: Option<String>,
+    pub job_title: Option<String>,
+    pub avatar_url: Option<String>,
 }
 
 pub async fn get_current_user(
@@ -400,7 +405,8 @@ pub async fn get_current_user(
 ) -> Result<Json<CurrentUserResponse>, (StatusCode, String)> {
     let user = sqlx::query!(
         r#"
-        SELECT u.id, u.name, u.email, u.role as "role: String", u.country_id, c.name as country_name
+        SELECT u.id, u.name, u.email, u.role as "role: String", u.country_id, c.name as country_name,
+               u.phone, u.bio, u.focus_area, u.job_title, u.avatar_url
         FROM users u
         JOIN countries c ON u.country_id = c.id
         WHERE u.id = $1
@@ -419,6 +425,132 @@ pub async fn get_current_user(
         role: user.role,
         country_id: user.country_id,
         country_name: user.country_name,
+        phone: user.phone,
+        bio: user.bio,
+        focus_area: user.focus_area,
+        job_title: user.job_title,
+        avatar_url: user.avatar_url,
     }))
 }
+
+#[derive(serde::Deserialize, TS, Debug)]
+#[ts(export, export_to = "../../../packages/shared-types/src/UpdateProfileRequest.ts")]
+pub struct UpdateProfileRequest {
+    pub name: String,
+    pub phone: Option<String>,
+    pub bio: Option<String>,
+    pub focus_area: Option<String>,
+    pub job_title: Option<String>,
+    pub avatar_url: Option<String>,
+}
+
+pub async fn update_current_user(
+    State(pool): State<PgPool>,
+    claims: UserClaims,
+    Json(payload): Json<UpdateProfileRequest>,
+) -> Result<Json<CurrentUserResponse>, (StatusCode, String)> {
+    sqlx::query!(
+        r#"
+        UPDATE users
+        SET name = $1, phone = $2, bio = $3, focus_area = $4, job_title = $5, avatar_url = $6
+        WHERE id = $7
+        "#,
+        payload.name,
+        payload.phone,
+        payload.bio,
+        payload.focus_area,
+        payload.job_title,
+        payload.avatar_url,
+        claims.sub
+    )
+    .execute(&pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let user = sqlx::query!(
+        r#"
+        SELECT u.id, u.name, u.email, u.role as "role: String", u.country_id, c.name as country_name,
+               u.phone, u.bio, u.focus_area, u.job_title, u.avatar_url
+        FROM users u
+        JOIN countries c ON u.country_id = c.id
+        WHERE u.id = $1
+        "#,
+        claims.sub
+    )
+    .fetch_optional(&pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+    .ok_or((StatusCode::NOT_FOUND, "User not found".to_string()))?;
+
+    Ok(Json(CurrentUserResponse {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        country_id: user.country_id,
+        country_name: user.country_name,
+        phone: user.phone,
+        bio: user.bio,
+        focus_area: user.focus_area,
+        job_title: user.job_title,
+        avatar_url: user.avatar_url,
+    }))
+}
+
+#[derive(Serialize, TS, Debug)]
+#[ts(export, export_to = "../../../packages/shared-types/src/UserResponse.ts")]
+pub struct UserResponse {
+    pub id: Uuid,
+    pub name: String,
+    pub email: String,
+    pub role: String,
+    pub country_id: Uuid,
+}
+
+#[derive(serde::Deserialize)]
+pub struct UsersQuery {
+    pub role: Option<String>,
+}
+
+pub async fn get_users(
+    State(pool): State<PgPool>,
+    claims: UserClaims,
+    Query(query): Query<UsersQuery>,
+) -> Result<Json<Vec<UserResponse>>, (StatusCode, String)> {
+    let role_filter = query.role;
+
+    let users = if let Some(role) = role_filter {
+        sqlx::query_as!(
+            UserResponse,
+            r#"
+            SELECT id, name, email, role as "role: String", country_id
+            FROM users
+            WHERE country_id = $1 AND role::text = $2
+            ORDER BY name ASC
+            "#,
+            claims.country_id,
+            role
+        )
+        .fetch_all(&pool)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+    } else {
+        sqlx::query_as!(
+            UserResponse,
+            r#"
+            SELECT id, name, email, role as "role: String", country_id
+            FROM users
+            WHERE country_id = $1
+            ORDER BY name ASC
+            "#,
+            claims.country_id
+        )
+        .fetch_all(&pool)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+    };
+
+    Ok(Json(users))
+}
+
 

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE projects\n        SET total_income = $1\n        WHERE id = $2\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Numeric",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "277a89fc68866c5c42c826e104ca7fba8ae5c3426bc928e9da0e72c3286f4849"
+}

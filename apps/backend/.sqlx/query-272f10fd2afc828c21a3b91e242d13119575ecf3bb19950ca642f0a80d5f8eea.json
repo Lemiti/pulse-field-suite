@@ -1,0 +1,77 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT name, description, budget_allocated, funding_sources, focus_area as \"focus_area: ProjectFocusArea\", location_metadata, start_date, end_date\n        FROM projects\n        WHERE id = $1 AND is_template = TRUE\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "budget_allocated",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 3,
+        "name": "funding_sources",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 4,
+        "name": "focus_area: ProjectFocusArea",
+        "type_info": {
+          "Custom": {
+            "name": "project_focus_area",
+            "kind": {
+              "Enum": [
+                "EDUCATION",
+                "HEALTH",
+                "WASH",
+                "EMPOWERMENT",
+                "TRAFFICKING"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "location_metadata",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 6,
+        "name": "start_date",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 7,
+        "name": "end_date",
+        "type_info": "Date"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "272f10fd2afc828c21a3b91e242d13119575ecf3bb19950ca642f0a80d5f8eea"
+}

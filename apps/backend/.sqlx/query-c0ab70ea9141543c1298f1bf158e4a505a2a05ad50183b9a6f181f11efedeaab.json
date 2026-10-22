@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            p.name as project_name,\n            gmt.code as metric_code,\n            gmt.display_name as metric_name,\n            pim.target_value as \"target_value!\",\n            pim.current_value as \"current_value!\",\n            gmt.unit as unit\n        FROM project_impact_metrics pim\n        JOIN projects p ON pim.project_id = p.id\n        JOIN global_metric_templates gmt ON pim.metric_template_id = gmt.id\n        WHERE p.country_id = $1\n        ORDER BY p.name ASC, gmt.display_name ASC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "project_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "metric_code",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "metric_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "target_value!",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "current_value!",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "unit",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "c0ab70ea9141543c1298f1bf158e4a505a2a05ad50183b9a6f181f11efedeaab"
+}

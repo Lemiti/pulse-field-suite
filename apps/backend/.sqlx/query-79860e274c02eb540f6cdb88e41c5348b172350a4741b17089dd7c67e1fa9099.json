@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO projects (\n            country_id, name, description, budget_allocated, funding_sources, \n            focus_area, location_metadata, start_date, end_date, status,\n            sector_type, risks_and_mitigations, assumptions, outcomes_and_indicators,\n            total_income, donor_name, project_leader_id\n        )\n        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::project_status, $11, $12, $13, $14, $15, $16, $17)\n        RETURNING id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar",
+        "Text",
+        "Numeric",
+        "Jsonb",
+        {
+          "Custom": {
+            "name": "project_focus_area",
+            "kind": {
+              "Enum": [
+                "EDUCATION",
+                "HEALTH",
+                "WASH",
+                "EMPOWERMENT",
+                "TRAFFICKING"
+              ]
+            }
+          }
+        },
+        "Jsonb",
+        "Date",
+        "Date",
+        {
+          "Custom": {
+            "name": "project_status",
+            "kind": {
+              "Enum": [
+                "PLANNING",
+                "IN_PROGRESS",
+                "COMPLETED",
+                "ON_HOLD",
+                "DRAFT"
+              ]
+            }
+          }
+        },
+        "Varchar",
+        "Jsonb",
+        "Text",
+        "Jsonb",
+        "Numeric",
+        "Varchar",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "79860e274c02eb540f6cdb88e41c5348b172350a4741b17089dd7c67e1fa9099"
+}

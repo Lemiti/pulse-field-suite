@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT pm.id, pm.project_id, pm.sender_id, pm.content, pm.created_at, u.name as \"sender_name: Option<String>\"\n        FROM project_messages pm\n        JOIN users u ON pm.sender_id = u.id\n        WHERE pm.project_id = $1\n        ORDER BY pm.created_at ASC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "project_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "sender_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "content",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "sender_name: Option<String>",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "6b43696f9a68e5358aab2afb5dfd0bc39f9af790cd6fa15bff8ade8ba8f42bc5"
+}

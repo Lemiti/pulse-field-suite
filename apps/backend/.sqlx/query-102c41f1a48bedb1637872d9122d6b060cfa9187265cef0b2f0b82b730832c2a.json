@@ -1,0 +1,53 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            CASE\n                WHEN p.status = 'DRAFT'::project_status THEN 'DRAFT'::project_status\n                WHEN task_rollup.task_count > 0 AND task_rollup.completed_count = task_rollup.task_count\n                    THEN 'COMPLETED'::project_status\n                WHEN task_rollup.active_count > 0\n                    THEN 'IN_PROGRESS'::project_status\n                ELSE 'PLANNING'::project_status\n            END as \"status!: ProjectStatus\",\n            p.budget_allocated as \"budget_allocated!\",\n            p.budget_spent as \"budget_spent!\",\n            CASE\n                WHEN task_rollup.total_days > 0\n                    THEN (task_rollup.completed_days::float8 / task_rollup.total_days::float8) * 100.0\n                ELSE 0.0\n            END as \"progress_percentage!\"\n        FROM projects p\n        LEFT JOIN LATERAL (\n            SELECT\n                COUNT(*) as task_count,\n                COUNT(*) FILTER (WHERE status = 'COMPLETED') as completed_count,\n                COUNT(*) FILTER (WHERE status IN ('IN_PROGRESS', 'COMPLETED')) as active_count,\n                COALESCE(SUM(COALESCE(GREATEST(end_date - start_date + 1, 1), 1)), 0) as total_days,\n                COALESCE(SUM(CASE WHEN status = 'COMPLETED' THEN COALESCE(GREATEST(end_date - start_date + 1, 1), 1) ELSE 0 END), 0) as completed_days\n            FROM tasks\n            WHERE project_id = p.id\n        ) task_rollup ON TRUE\n        WHERE p.country_id = $1 AND p.is_template = FALSE\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "status!: ProjectStatus",
+        "type_info": {
+          "Custom": {
+            "name": "project_status",
+            "kind": {
+              "Enum": [
+                "PLANNING",
+                "IN_PROGRESS",
+                "COMPLETED",
+                "ON_HOLD",
+                "DRAFT"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "budget_allocated!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 2,
+        "name": "budget_spent!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 3,
+        "name": "progress_percentage!",
+        "type_info": "Float8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "102c41f1a48bedb1637872d9122d6b060cfa9187265cef0b2f0b82b730832c2a"
+}

@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT m.id, p.country_id \n        FROM project_impact_metrics m\n        JOIN projects p ON m.project_id = p.id\n        WHERE m.id = $1 AND m.project_id = $2\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "country_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "f60d2d60b2c8dfd7c92290aba19d4d673eb5ae26ba9db4d9f131f9ce0af1264a"
+}

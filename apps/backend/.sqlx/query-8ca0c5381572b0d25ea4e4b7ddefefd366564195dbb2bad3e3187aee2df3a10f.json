@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE tasks\n        SET phase_id = $1, updated_at = CURRENT_TIMESTAMP\n        WHERE id = $2\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8ca0c5381572b0d25ea4e4b7ddefefd366564195dbb2bad3e3187aee2df3a10f"
+}

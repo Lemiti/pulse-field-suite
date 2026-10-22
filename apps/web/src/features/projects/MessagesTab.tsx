@@ -96,7 +96,7 @@ export default function MessagesTab({ projectId }: MessagesTabProps) {
   }, [messages]);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-280px)] min-h-[400px] max-w-3xl border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-900">
+    <div className="flex flex-col h-[calc(100vh-280px)] min-h-[400px] max-w-3xl border-0 dark:border dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-900 shadow-md dark:shadow-none">
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
         {sorted.length === 0 ? (
           <p className="text-sm text-slate-500 text-center py-8">No messages yet. Start the conversation.</p>
@@ -110,7 +110,7 @@ export default function MessagesTab({ projectId }: MessagesTabProps) {
             return (
               <div key={msg.id} className={`flex flex-col ${isSelf ? 'items-end' : 'items-start'}`}>
                 <div className={`mb-1 ${isSelf ? 'text-right' : 'text-left'}`}>
-                  <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{name}</span>
+                  <span className="text-xs font-bold text-gray-900 dark:text-slate-200">{name}</span>
                   <span className="ml-2 text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500">
                     {role}
                   </span>

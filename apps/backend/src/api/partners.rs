@@ -222,6 +222,8 @@ pub async fn update_project_partners(
         return Err((StatusCode::FORBIDDEN, "Access Denied: Project belongs to another tenant".to_string()));
     }
 
+    crate::api::projects::check_project_write_access(&pool, project_id, claims.sub, &claims.role).await?;
+
     let mut tx = pool.begin().await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     // 1. Delete all existing partners for this project

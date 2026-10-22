@@ -5,8 +5,6 @@ use axum::{
 };
 use sqlx::PgPool;
 use rust_decimal::prelude::ToPrimitive;
-use uuid::Uuid;
-use chrono::{DateTime, Utc};
 
 use crate::api::auth::UserClaims;
 use crate::models::{
@@ -122,7 +120,9 @@ pub async fn get_dashboard_summary(
             p.assumptions,
             p.outcomes_and_indicators,
             p.total_income,
-            p.donor_name
+            p.donor_name,
+            p.project_leader_id,
+            COALESCE((SELECT array_agg(user_id) FROM project_members WHERE project_id = p.id), ARRAY[]::uuid[]) as "member_ids!"
         FROM projects p
         LEFT JOIN LATERAL (
             SELECT

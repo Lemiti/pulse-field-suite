@@ -23,7 +23,7 @@ import { Link } from 'react-router-dom';
 function formatCurrency(val: number): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'ETB',
     maximumFractionDigits: 0,
   }).format(val);
 }
@@ -154,10 +154,10 @@ export default function Home() {
       {/* ================= SECTION 1: TOP RIBBON METRICS ================= */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Metric Card 1: Active Projects */}
-        <div className="bg-white dark:bg-[#0B1220] border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm flex items-center justify-between">
+        <div className="bg-white dark:bg-[#0B1220] border-0 dark:border dark:border-slate-800 rounded-xl p-6 shadow-md dark:shadow-none flex items-center justify-between">
           <div className="space-y-1">
             <span className="text-slate-400 font-extrabold text-xs uppercase tracking-wider block">Active Initiatives</span>
-            <h2 className="text-3xl font-extrabold text-slate-800 dark:text-white">{global_metrics.active_projects_count}</h2>
+            <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white">{global_metrics.active_projects_count}</h2>
             <span className="text-[10px] text-slate-500 block">Excluding workspace template drafts</span>
           </div>
           <div className="p-3.5 bg-blue-50 dark:bg-blue-950/40 rounded-xl">
@@ -166,10 +166,10 @@ export default function Home() {
         </div>
 
         {/* Metric Card 2: Budget vs Spent */}
-        <div className="bg-white dark:bg-[#0B1220] border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm flex items-center justify-between">
+        <div className="bg-white dark:bg-[#0B1220] border-0 dark:border dark:border-slate-800 rounded-xl p-6 shadow-md dark:shadow-none flex items-center justify-between">
           <div className="space-y-1">
             <span className="text-slate-400 font-extrabold text-xs uppercase tracking-wider block">Portfolio Budget & Spent</span>
-            <h2 className="text-xl font-extrabold text-slate-800 dark:text-white truncate max-w-[200px]">
+            <h2 className="text-xl font-extrabold text-gray-900 dark:text-white truncate max-w-[200px]">
               {formatCurrency(global_metrics.total_budget_spent)} / {formatCurrency(global_metrics.total_budget_allocated)}
             </h2>
             <div className="flex items-center gap-2 mt-1">
@@ -188,10 +188,10 @@ export default function Home() {
         </div>
 
         {/* Metric Card 3: Avg KPI Progress */}
-        <div className="bg-white dark:bg-[#0B1220] border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm flex items-center justify-between">
+        <div className="bg-white dark:bg-[#0B1220] border-0 dark:border dark:border-slate-800 rounded-xl p-6 shadow-md dark:shadow-none flex items-center justify-between">
           <div className="space-y-1">
             <span className="text-slate-400 font-extrabold text-xs uppercase tracking-wider block">Target Progress Average</span>
-            <h2 className="text-3xl font-extrabold text-slate-800 dark:text-white">
+            <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white">
               {global_metrics.average_progress_percentage.toFixed(1)}%
             </h2>
             <span className="text-[10px] text-slate-500 block">Calculated across all active tasks</span>
@@ -209,7 +209,7 @@ export default function Home() {
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-extrabold text-slate-850 dark:text-white">Recently Updated Projects</h2>
+              <h2 className="text-lg font-extrabold text-gray-900 dark:text-white">Recently Updated Projects</h2>
               <p className="text-xs text-slate-400 dark:text-slate-500">Fast access to monitor progress metrics and run summaries</p>
             </div>
             <Link 
@@ -221,7 +221,7 @@ export default function Home() {
           </div>
 
           {recent_projects.length === 0 ? (
-            <div className="bg-white dark:bg-[#0B1220] border border-slate-200 dark:border-slate-800 rounded-xl p-12 text-center">
+            <div className="bg-white dark:bg-[#0B1220] border-0 dark:border dark:border-slate-800 rounded-xl p-12 text-center shadow-md dark:shadow-none">
               <Briefcase className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
               <p className="text-sm text-slate-500">No projects recorded yet.</p>
               <Link to="/projects?create=true" className="mt-3 inline-flex text-xs font-bold text-blue-600 dark:text-blue-400">
@@ -233,11 +233,11 @@ export default function Home() {
               {recent_projects.map((project) => (
                 <div 
                   key={project.id} 
-                  className="bg-white dark:bg-[#0B1220] border border-slate-200 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-900 rounded-xl p-5 shadow-sm transition-all duration-200 flex flex-col justify-between space-y-4"
+                  className="bg-white dark:bg-[#0B1220] border-0 dark:border dark:border-slate-800 hover:shadow-lg rounded-xl p-5 shadow-md dark:shadow-none transition-all duration-200 flex flex-col justify-between space-y-4"
                 >
                   <div className="space-y-2">
                     <div className="flex items-start justify-between gap-3">
-                      <h3 className="font-bold text-sm text-slate-800 dark:text-white line-clamp-1">
+                      <h3 className="font-bold text-sm text-gray-900 dark:text-white line-clamp-1">
                         {project.name}
                       </h3>
                       {getStatusBadge(project.status)}
@@ -252,7 +252,7 @@ export default function Home() {
                     <div className="space-y-1">
                       <div className="flex items-center justify-between text-[10px]">
                         <span className="font-bold text-slate-400 uppercase tracking-wider">Progress</span>
-                        <span className="font-extrabold text-slate-700 dark:text-slate-200">{Math.round(project.progress_percentage)}%</span>
+                        <span className="font-extrabold text-gray-900 dark:text-slate-200">{Math.round(project.progress_percentage)}%</span>
                       </div>
                       <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                         <div 
@@ -261,11 +261,11 @@ export default function Home() {
                         />
                       </div>
                     </div>
-
+ 
                     <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800/80">
                       <Link 
                         to={`/projects/${project.id}`} 
-                        className="text-xs font-extrabold text-slate-650 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-1"
+                        className="text-xs font-extrabold text-slate-500 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-1"
                       >
                         Workspace <ExternalLink className="w-3.5 h-3.5" />
                       </Link>
@@ -287,11 +287,11 @@ export default function Home() {
         {/* SECTION 3 (Middle-Right): Action Items & System Alerts */}
         <div className="space-y-4">
           <div>
-            <h2 className="text-lg font-extrabold text-slate-850 dark:text-white">Action Items & System Alerts</h2>
+            <h2 className="text-lg font-extrabold text-gray-900 dark:text-white">Action Items & System Alerts</h2>
             <p className="text-xs text-slate-400 dark:text-slate-500">Critical tasks, budget thresholds, and compliance flags</p>
           </div>
-
-          <div className="bg-white dark:bg-[#0B1220] border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm space-y-4 max-h-[345px] overflow-y-auto min-h-[300px]">
+ 
+          <div className="bg-white dark:bg-[#0B1220] border-0 dark:border dark:border-slate-800 rounded-xl p-5 shadow-md dark:shadow-none space-y-4 max-h-[345px] overflow-y-auto min-h-[300px]">
             {action_items.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center space-y-2 h-full">
                 <CheckCircle className="w-10 h-10 text-emerald-500" />
@@ -349,11 +349,11 @@ export default function Home() {
         {/* SECTION 4 (Bottom-Left): Dynamic Field Activity Feed */}
         <div className="lg:col-span-2 space-y-4">
           <div>
-            <h2 className="text-lg font-extrabold text-slate-850 dark:text-white">Live Field Activity Feed</h2>
+            <h2 className="text-lg font-extrabold text-gray-900 dark:text-white">Live Field Activity Feed</h2>
             <p className="text-xs text-slate-400 dark:text-slate-500">Chronological list of compliance logs and worker status updates</p>
           </div>
-
-          <div className="bg-white dark:bg-[#0B1220] border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm min-h-[300px]">
+ 
+          <div className="bg-white dark:bg-[#0B1220] border-0 dark:border dark:border-slate-800 rounded-xl p-6 shadow-md dark:shadow-none min-h-[300px]">
             {activity_feed.length === 0 ? (
               <p className="text-xs text-slate-500 text-center py-12">Waiting for new audit or field activity...</p>
             ) : (
@@ -372,7 +372,7 @@ export default function Home() {
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                         <div className="space-y-0.5">
                           <p className="text-xs text-slate-700 dark:text-slate-200">
-                            <span className="font-extrabold text-slate-900 dark:text-white mr-1">{act.user_name}</span>
+                            <span className="font-extrabold text-gray-900 dark:text-white mr-1">{act.user_name}</span>
                             {isAudit ? (
                               <span className="text-slate-500">
                                 performed compliance action <span className="font-semibold text-slate-800 dark:text-slate-300">{act.content.toLowerCase().replace(/_/g, ' ')}</span>
@@ -409,54 +409,54 @@ export default function Home() {
         {/* SECTION 5 (Bottom-Right): Quick Actions Panel */}
         <div className="space-y-4">
           <div>
-            <h2 className="text-lg font-extrabold text-slate-850 dark:text-white">Quick Actions</h2>
+            <h2 className="text-lg font-extrabold text-gray-900 dark:text-white">Quick Actions</h2>
             <p className="text-xs text-slate-400 dark:text-slate-500">Common administrative actions and reporting shortcuts</p>
           </div>
-
-          <div className="bg-white dark:bg-[#0B1220] border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm space-y-4 min-h-[300px] flex flex-col justify-center">
+ 
+          <div className="bg-white dark:bg-[#0B1220] border-0 dark:border dark:border-slate-800 rounded-xl p-5 shadow-md dark:shadow-none space-y-4 min-h-[300px] flex flex-col justify-center">
             
             {/* Quick Action Button 1: Create New Project */}
             <Link 
               to="/projects?create=true" 
-              className="flex items-center gap-4 p-4 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-900 bg-slate-50/50 dark:bg-slate-900/50 transition duration-150 group cursor-pointer"
+              className="flex items-center gap-4 p-4 rounded-xl border border-slate-100 dark:border-slate-800 hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-900 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm dark:shadow-none transition duration-150 group cursor-pointer"
             >
               <div className="p-3 bg-blue-50 dark:bg-blue-950/50 rounded-xl text-blue-600 dark:text-blue-400">
                 <Plus className="w-5 h-5" />
               </div>
               <div className="text-left flex-1 min-w-0">
-                <h3 className="text-sm font-extrabold text-slate-850 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                <h3 className="text-sm font-extrabold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                   Create New Project
                 </h3>
                 <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Start the 3-step creation wizard</p>
               </div>
             </Link>
-
+ 
             {/* Quick Action Button 2: Generate Donor Report */}
             <Link 
               to="/reports" 
-              className="flex items-center gap-4 p-4 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-900 bg-slate-50/50 dark:bg-slate-900/50 transition duration-150 group cursor-pointer"
+              className="flex items-center gap-4 p-4 rounded-xl border border-slate-100 dark:border-slate-800 hover:shadow-lg hover:border-indigo-300 dark:hover:border-indigo-900 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm dark:shadow-none transition duration-150 group cursor-pointer"
             >
               <div className="p-3 bg-indigo-50 dark:bg-indigo-950/50 rounded-xl text-indigo-600 dark:text-indigo-400">
                 <FileSpreadsheet className="w-5 h-5" />
               </div>
               <div className="text-left flex-1 min-w-0">
-                <h3 className="text-sm font-extrabold text-slate-850 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                <h3 className="text-sm font-extrabold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                   Generate Donor Report
                 </h3>
                 <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">View BvA financial budgets and KPI outputs</p>
               </div>
             </Link>
-
+ 
             {/* Quick Action Button 3: View Audit History */}
             <Link 
               to="/audit-logs" 
-              className="flex items-center gap-4 p-4 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-amber-300 dark:hover:border-amber-900 bg-slate-50/50 dark:bg-slate-900/50 transition duration-150 group cursor-pointer"
+              className="flex items-center gap-4 p-4 rounded-xl border border-slate-100 dark:border-slate-800 hover:shadow-lg hover:border-amber-300 dark:hover:border-amber-900 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm dark:shadow-none transition duration-150 group cursor-pointer"
             >
               <div className="p-3 bg-amber-50 dark:bg-amber-950/50 rounded-xl text-amber-600 dark:text-amber-400">
                 <History className="w-5 h-5" />
               </div>
               <div className="text-left flex-1 min-w-0">
-                <h3 className="text-sm font-extrabold text-slate-850 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                <h3 className="text-sm font-extrabold text-gray-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
                   View Audit History
                 </h3>
                 <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Track live logs and database status changes</p>

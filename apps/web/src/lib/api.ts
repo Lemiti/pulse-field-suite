@@ -59,7 +59,8 @@ api.interceptors.response.use(
         } catch (_) {}
       }
 
-      if (url.includes('/projects') && method === 'POST') {
+      const path = url.split('?')[0];
+      if ((path === '/projects' || path === '/projects/') && method === 'POST') {
         if (payload.status !== 'DRAFT') {
           message = "Project created successfully!";
         }
@@ -82,7 +83,7 @@ api.interceptors.response.use(
       } else if (url.includes('/notes/') && method === 'DELETE') {
         message = "Field note deleted successfully!";
       } else if (url.includes('/messages') && method === 'POST') {
-        message = "Message sent successfully!";
+        // Chat messages do not trigger toast popups on every send
       } else if (url.includes('/impact') && method === 'POST') {
         message = "Impact metric assigned successfully!";
       } else if (url.includes('/impact/') && method === 'PATCH') {
@@ -115,8 +116,11 @@ api.interceptors.response.use(
         window.location.href = "/login";
       }
     } else if (error.response && error.response.status >= 400) {
-      const message = getApiErrorMessage(error, "An unexpected error occurred");
-      toast.error(message);
+      // Allow requests to skip global error toast triggering
+      if (!error.config?.skipGlobalToast) {
+        const message = getApiErrorMessage(error, "An unexpected error occurred");
+        toast.error(message);
+      }
     }
     return Promise.reject(error);
   }

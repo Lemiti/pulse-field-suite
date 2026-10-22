@@ -7,7 +7,7 @@ use crate::api::auth::{UserClaims, PmOrAdminClaims, StaffClaims};
 use crate::models::{CreateProjectRequest, ProjectResponse, ProjectStatus, ProjectFocusArea, PhaseResponse, CreatePhaseRequest};
 use crate::models::{
     FieldLogResponse, CreateFieldLogRequest, UpdateFieldLogRequest,
-    ProjectMessageResponse, CreateProjectMessageRequest, ProjectImpactMetricResponse, UpdateImpactMetricRequest
+    ProjectMessageResponse, CreateProjectMessageRequest
 };
 
 #[derive(serde::Deserialize)]
@@ -39,6 +39,52 @@ pub async fn refresh_project_status(
     .await?;
 
     Ok(())
+}
+
+pub async fn check_project_write_access(
+    pool: &PgPool,
+    project_id: Uuid,
+    user_id: Uuid,
+    role: &str,
+) -> Result<(), (StatusCode, String)> {
+    if role == "ADMIN" || role == "PROJECT_MANAGER" {
+        return Ok(());
+    }
+
+    // Check if the user is the leader of the project
+    let leader_exists = sqlx::query_scalar!(
+        "SELECT EXISTS(SELECT 1 FROM projects WHERE id = $1 AND project_leader_id = $2)",
+        project_id,
+        user_id
+    )
+    .fetch_one(pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+    .unwrap_or(false);
+
+    if leader_exists {
+        return Ok(());
+    }
+
+    // Check if the user is a team member
+    let member_exists = sqlx::query_scalar!(
+        "SELECT EXISTS(SELECT 1 FROM project_members WHERE project_id = $1 AND user_id = $2)",
+        project_id,
+        user_id
+    )
+    .fetch_one(pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+    .unwrap_or(false);
+
+    if member_exists {
+        return Ok(());
+    }
+
+    Err((
+        StatusCode::FORBIDDEN,
+        "Access Denied: You must be a Project Manager, Admin, Project Leader, or assigned Team Member.".to_string(),
+    ))
 }
 
 // GET /api/projects
@@ -83,7 +129,9 @@ pub async fn get_projects(
             p.assumptions,
             p.outcomes_and_indicators,
             p.total_income,
-            p.donor_name
+            p.donor_name,
+            p.project_leader_id,
+            COALESCE((SELECT array_agg(user_id) FROM project_members WHERE project_id = p.id), ARRAY[]::uuid[]) as "member_ids!"
         FROM projects p
         LEFT JOIN LATERAL (
             SELECT
@@ -162,7 +210,9 @@ pub async fn get_project(
             p.assumptions,
             p.outcomes_and_indicators,
             p.total_income,
-            p.donor_name
+            p.donor_name,
+            p.project_leader_id,
+            COALESCE((SELECT array_agg(user_id) FROM project_members WHERE project_id = p.id), ARRAY[]::uuid[]) as "member_ids!"
         FROM projects p
         LEFT JOIN LATERAL (
             SELECT
@@ -194,6 +244,9 @@ pub async fn create_project(
     Json(payload): Json<CreateProjectRequest>,
 ) -> Result<Json<ProjectResponse>, (StatusCode, String)> {
     let claims = pm_claims.0;
+    
+    let mut tx = pool.begin().await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
     let budget_allocated = payload.budget_allocated.unwrap_or(rust_decimal::Decimal::from(0));
     let funding_sources = payload.funding_sources.unwrap_or_default();
     let funding_json = serde_json::to_value(&funding_sources).unwrap_or(serde_json::json!([]));
@@ -203,34 +256,16 @@ pub async fn create_project(
     let risks_and_mitigations = payload.risks_and_mitigations.unwrap_or(serde_json::json!([]));
     let outcomes_and_indicators = payload.outcomes_and_indicators.unwrap_or(serde_json::json!([]));
 
-    let project = sqlx::query_as!(
-        ProjectResponse,
+    let project_id = sqlx::query_scalar!(
         r#"
         INSERT INTO projects (
             country_id, name, description, budget_allocated, funding_sources, 
             focus_area, location_metadata, start_date, end_date, status,
             sector_type, risks_and_mitigations, assumptions, outcomes_and_indicators,
-            total_income, donor_name
+            total_income, donor_name, project_leader_id
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::project_status, $11, $12, $13, $14, $15, $16)
-        RETURNING 
-            id, country_id, name, description, 
-            budget_allocated, 
-            budget_spent, 
-            status as "status: ProjectStatus", 
-            funding_sources,
-            focus_area as "focus_area: ProjectFocusArea",
-            location_metadata,
-            0.0::float8 as "progress_percentage!",
-            is_template,
-            start_date,
-            end_date,
-            sector_type,
-            risks_and_mitigations,
-            assumptions,
-            outcomes_and_indicators,
-            total_income,
-            donor_name
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::project_status, $11, $12, $13, $14, $15, $16, $17)
+        RETURNING id
         "#,
         claims.country_id, // Automatically bind the project to the user's country!
         payload.name,
@@ -247,7 +282,61 @@ pub async fn create_project(
         payload.assumptions,
         outcomes_and_indicators,
         payload.total_income,
-        payload.donor_name
+        payload.donor_name,
+        payload.project_leader_id
+    )
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    if let Some(ref member_ids) = payload.member_ids {
+        for member_id in member_ids {
+            sqlx::query!(
+                r#"
+                INSERT INTO project_members (project_id, user_id)
+                VALUES ($1, $2)
+                "#,
+                project_id,
+                member_id
+            )
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+        }
+    }
+
+    tx.commit().await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let project = sqlx::query_as!(
+        ProjectResponse,
+        r#"
+        SELECT
+            p.id,
+            p.country_id,
+            p.name,
+            p.description,
+            p.budget_allocated,
+            p.budget_spent,
+            p.status as "status: ProjectStatus",
+            p.funding_sources,
+            p.focus_area as "focus_area: ProjectFocusArea",
+            p.location_metadata,
+            0.0::float8 as "progress_percentage!",
+            p.is_template,
+            p.start_date,
+            p.end_date,
+            p.sector_type,
+            p.risks_and_mitigations,
+            p.assumptions,
+            p.outcomes_and_indicators,
+            p.total_income,
+            p.donor_name,
+            p.project_leader_id,
+            COALESCE((SELECT array_agg(user_id) FROM project_members WHERE project_id = p.id), ARRAY[]::uuid[]) as "member_ids!"
+        FROM projects p
+        WHERE p.id = $1
+        "#,
+        project_id
     )
     .fetch_one(&pool)
     .await
@@ -355,7 +444,9 @@ pub async fn update_project_budget(
             p.assumptions,
             p.outcomes_and_indicators,
             p.total_income,
-            p.donor_name
+            p.donor_name,
+            p.project_leader_id,
+            COALESCE((SELECT array_agg(user_id) FROM project_members WHERE project_id = p.id), ARRAY[]::uuid[]) as "member_ids!"
         FROM updated_project p
         LEFT JOIN LATERAL (
             SELECT
@@ -584,6 +675,8 @@ pub async fn create_project_phase(
         return Err((StatusCode::FORBIDDEN, "Access Denied or Project not found".to_string()));
     }
 
+    check_project_write_access(&pool, project_id, claims.sub, &claims.role).await?;
+
     let sort_order = payload.sort_order.unwrap_or(0);
 
     let phase = sqlx::query_as!(
@@ -668,6 +761,8 @@ pub async fn create_project_note(
     if !project_exists {
         return Err((StatusCode::FORBIDDEN, "Access Denied or Project not found".to_string()));
     }
+
+    check_project_write_access(&pool, project_id, claims.sub, &claims.role).await?;
 
     let note = sqlx::query_as!(
         FieldLogResponse,
@@ -997,12 +1092,15 @@ pub async fn update_project(
     Json(payload): Json<CreateProjectRequest>,
 ) -> Result<Json<ProjectResponse>, (StatusCode, String)> {
     let claims = pm_claims.0;
+    
+    let mut tx = pool.begin().await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
     // 1. Verify project exists and belongs to user's country_id
     let current_project = sqlx::query!(
         r#"SELECT country_id, budget_spent, status as "status: ProjectStatus" FROM projects WHERE id = $1"#,
         project_id
     )
-    .fetch_optional(&pool)
+    .fetch_optional(&mut *tx)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
     .ok_or((StatusCode::NOT_FOUND, "Project not found".to_string()))?;
@@ -1021,8 +1119,7 @@ pub async fn update_project(
     let risks_and_mitigations = payload.risks_and_mitigations.unwrap_or(serde_json::json!([]));
     let outcomes_and_indicators = payload.outcomes_and_indicators.unwrap_or(serde_json::json!([]));
 
-    let updated = sqlx::query_as!(
-        ProjectResponse,
+    sqlx::query!(
         r#"
         UPDATE projects
         SET 
@@ -1040,26 +1137,9 @@ pub async fn update_project(
             assumptions = $12,
             outcomes_and_indicators = $13,
             total_income = $14,
-            donor_name = $15
-        WHERE id = $16
-        RETURNING
-            id, country_id, name, description, 
-            budget_allocated, 
-            budget_spent, 
-            status as "status: ProjectStatus", 
-            funding_sources,
-            focus_area as "focus_area: ProjectFocusArea",
-            location_metadata,
-            0.0::float8 as "progress_percentage!",
-            is_template,
-            start_date,
-            end_date,
-            sector_type,
-            risks_and_mitigations,
-            assumptions,
-            outcomes_and_indicators,
-            total_income,
-            donor_name
+            donor_name = $15,
+            project_leader_id = $16
+        WHERE id = $17
         "#,
         payload.name,
         payload.description,
@@ -1076,6 +1156,91 @@ pub async fn update_project(
         outcomes_and_indicators,
         payload.total_income,
         payload.donor_name,
+        payload.project_leader_id,
+        project_id
+    )
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    // Delete existing project members
+    sqlx::query!(
+        r#"DELETE FROM project_members WHERE project_id = $1"#,
+        project_id
+    )
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    // Insert new project members
+    if let Some(ref member_ids) = payload.member_ids {
+        for member_id in member_ids {
+            sqlx::query!(
+                r#"
+                INSERT INTO project_members (project_id, user_id)
+                VALUES ($1, $2)
+                "#,
+                project_id,
+                member_id
+            )
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+        }
+    }
+
+    tx.commit().await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let updated = sqlx::query_as!(
+        ProjectResponse,
+        r#"
+        SELECT
+            p.id,
+            p.country_id,
+            p.name,
+            p.description,
+            p.budget_allocated,
+            p.budget_spent,
+            CASE
+                WHEN p.status = 'DRAFT'::project_status THEN 'DRAFT'::project_status
+                WHEN task_rollup.task_count > 0 AND task_rollup.completed_count = task_rollup.task_count
+                    THEN 'COMPLETED'::project_status
+                WHEN task_rollup.active_count > 0
+                    THEN 'IN_PROGRESS'::project_status
+                ELSE 'PLANNING'::project_status
+            END as "status!: ProjectStatus",
+            p.funding_sources,
+            p.focus_area as "focus_area: ProjectFocusArea",
+            p.location_metadata,
+            CASE
+                WHEN task_rollup.total_days > 0
+                    THEN (task_rollup.completed_days::float8 / task_rollup.total_days::float8) * 100.0
+                ELSE 0.0
+            END as "progress_percentage!",
+            p.is_template,
+            p.start_date,
+            p.end_date,
+            p.sector_type,
+            p.risks_and_mitigations,
+            p.assumptions,
+            p.outcomes_and_indicators,
+            p.total_income,
+            p.donor_name,
+            p.project_leader_id,
+            COALESCE((SELECT array_agg(user_id) FROM project_members WHERE project_id = p.id), ARRAY[]::uuid[]) as "member_ids!"
+        FROM projects p
+        LEFT JOIN LATERAL (
+            SELECT
+                COUNT(*) as task_count,
+                COUNT(*) FILTER (WHERE status = 'COMPLETED') as completed_count,
+                COUNT(*) FILTER (WHERE status IN ('IN_PROGRESS', 'COMPLETED')) as active_count,
+                COALESCE(SUM(COALESCE(GREATEST(end_date - start_date + 1, 1), 1)), 0) as total_days,
+                COALESCE(SUM(CASE WHEN status = 'COMPLETED' THEN COALESCE(GREATEST(end_date - start_date + 1, 1), 1) ELSE 0 END), 0) as completed_days
+            FROM tasks
+            WHERE project_id = p.id
+        ) task_rollup ON TRUE
+        WHERE p.id = $1
+        "#,
         project_id
     )
     .fetch_one(&pool)

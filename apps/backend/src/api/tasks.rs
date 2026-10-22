@@ -3,7 +3,7 @@ use sqlx::PgPool;
 use uuid::Uuid;
 use serde::Deserialize;
 use ts_rs::TS;
-use crate::api::auth::{UserClaims, PmOrAdminClaims, StaffClaims};
+use crate::api::auth::{UserClaims, StaffClaims};
 use crate::api::projects::refresh_project_status;
 use crate::models::{CreateTaskRequest, TaskResponse, TaskStatus};
 use crate::models::UpdateTaskStatusRequest;
@@ -25,12 +25,15 @@ pub async fn get_tasks(
             t.phase_id,
             t.name,
             t.status as "status: TaskStatus",
+            t.assigned_to,
+            u.name as "assigned_user_name?",
             t.start_date,
             t.end_date,
             t.created_at,
             t.updated_at
         FROM tasks t
         JOIN projects p ON t.project_id = p.id
+        LEFT JOIN users u ON t.assigned_to = u.id
         WHERE t.project_id = $1 AND p.country_id = $2
         ORDER BY t.created_at ASC
         "#,
@@ -47,10 +50,9 @@ pub async fn get_tasks(
 // POST /api/tasks
 pub async fn create_task(
     State(pool): State<PgPool>,
-    pm_claims: PmOrAdminClaims, // 🛡️ AUTH GUARD: PM or Admin only
+    claims: UserClaims, // 🛡️ AUTH GUARD
     Json(payload): Json<CreateTaskRequest>,
 ) -> Result<Json<TaskResponse>, (StatusCode, String)> {
-    let claims = pm_claims.0;
     
     // 🛡️ SECURITY: Verify the user has access to this project before creating the task
     let has_access = sqlx::query_scalar!(
@@ -66,33 +68,51 @@ pub async fn create_task(
         return Err((StatusCode::FORBIDDEN, "Access Denied: Project belongs to another tenant".to_string()));
     }
 
+    crate::api::projects::check_project_write_access(&pool, payload.project_id, claims.sub, &claims.role).await?;
+
     if payload.end_date < payload.start_date {
         return Err((StatusCode::BAD_REQUEST, "end_date must be after or equal to start_date".to_string()));
     }
 
     let mut tx = pool.begin().await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    let task = sqlx::query_as!(
-        TaskResponse,
+    let inserted_id = sqlx::query_scalar!(
         r#"
-        INSERT INTO tasks (project_id, phase_id, name, start_date, end_date)
-        VALUES ($1, $2, $3, $4, $5)
-        RETURNING
-            id,
-            project_id,
-            phase_id,
-            name,
-            status as "status: TaskStatus",
-            start_date,
-            end_date,
-            created_at,
-            updated_at
+        INSERT INTO tasks (project_id, phase_id, name, assigned_to, start_date, end_date)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING id
         "#,
         payload.project_id,
         payload.phase_id,
         payload.name,
+        payload.assigned_to,
         payload.start_date,
         payload.end_date
+    )
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let task = sqlx::query_as!(
+        TaskResponse,
+        r#"
+        SELECT
+            t.id,
+            t.project_id,
+            t.phase_id,
+            t.name,
+            t.status as "status: TaskStatus",
+            t.assigned_to,
+            u.name as "assigned_user_name?",
+            t.start_date,
+            t.end_date,
+            t.created_at,
+            t.updated_at
+        FROM tasks t
+        LEFT JOIN users u ON t.assigned_to = u.id
+        WHERE t.id = $1
+        "#,
+        inserted_id
     )
     .fetch_one(&mut *tx)
     .await
@@ -136,6 +156,8 @@ pub async fn update_task_status(
         return Err((StatusCode::FORBIDDEN, "Access Denied".to_string()));
     }
 
+    crate::api::projects::check_project_write_access(&pool, current_task.project_id, claims.sub, &claims.role).await?;
+
 // 🚀 2. BEGIN ATOMIC TRANSACTION
     let mut tx = pool.begin().await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
@@ -145,24 +167,38 @@ pub async fn update_task_status(
     let new_val = format!("{:?}", payload.status);      // payload.status is borrowed safely here
 
     // 4. Update the task
-    let updated_task = sqlx::query_as!(
-        TaskResponse,
+    sqlx::query!(
         r#"
         UPDATE tasks 
         SET status = $1, updated_at = CURRENT_TIMESTAMP
         WHERE id = $2
-        RETURNING
-            id,
-            project_id,
-            phase_id,
-            name,
-            status as "status: TaskStatus",
-            start_date,
-            end_date,
-            created_at,
-            updated_at
         "#,
-        payload.status as TaskStatus, // <-- payload.status is MOVED here (which is now fine!)
+        payload.status as TaskStatus,
+        task_id
+    )
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let updated_task = sqlx::query_as!(
+        TaskResponse,
+        r#"
+        SELECT
+            t.id,
+            t.project_id,
+            t.phase_id,
+            t.name,
+            t.status as "status: TaskStatus",
+            t.assigned_to,
+            u.name as "assigned_user_name?",
+            t.start_date,
+            t.end_date,
+            t.created_at,
+            t.updated_at
+        FROM tasks t
+        LEFT JOIN users u ON t.assigned_to = u.id
+        WHERE t.id = $1
+        "#,
         task_id
     )
     .fetch_one(&mut *tx)
@@ -229,6 +265,8 @@ pub async fn update_task_phase(
         return Err((StatusCode::FORBIDDEN, "Access Denied".to_string()));
     }
 
+    crate::api::projects::check_project_write_access(&pool, current_task.project_id, claims.sub, &claims.role).await?;
+
     if let Some(pid) = payload.phase_id {
         let phase_project_exists = sqlx::query_scalar!(
             "SELECT EXISTS(SELECT 1 FROM phases WHERE id = $1 AND project_id = $2)",
@@ -263,24 +301,38 @@ pub async fn update_task_phase(
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    let updated_task = sqlx::query_as!(
-        TaskResponse,
+    sqlx::query!(
         r#"
         UPDATE tasks
         SET phase_id = $1, updated_at = CURRENT_TIMESTAMP
         WHERE id = $2
-        RETURNING
-            id,
-            project_id,
-            phase_id,
-            name,
-            status as "status: TaskStatus",
-            start_date,
-            end_date,
-            created_at,
-            updated_at
         "#,
         payload.phase_id,
+        task_id
+    )
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let updated_task = sqlx::query_as!(
+        TaskResponse,
+        r#"
+        SELECT
+            t.id,
+            t.project_id,
+            t.phase_id,
+            t.name,
+            t.status as "status: TaskStatus",
+            t.assigned_to,
+            u.name as "assigned_user_name?",
+            t.start_date,
+            t.end_date,
+            t.created_at,
+            t.updated_at
+        FROM tasks t
+        LEFT JOIN users u ON t.assigned_to = u.id
+        WHERE t.id = $1
+        "#,
         task_id
     )
     .fetch_one(&mut *tx)

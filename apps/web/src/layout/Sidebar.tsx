@@ -1,14 +1,16 @@
 import { NavLink } from 'react-router-dom';
-import { Home, Mail, FolderKanban, History, BarChart3, Settings, HelpCircle, LogOut, Handshake } from 'lucide-react';
+import { Home, Mail, FolderKanban, History, BarChart3, Settings, HelpCircle, LogOut, Handshake, Truck, Users } from 'lucide-react';
 import { useAuth } from '../features/auth/AuthContext';
 
 export default function Sidebar() {
   const { role, logout } = useAuth();
 
   const navItems = [
-    { name: 'Home', path: '/', icon: Home },
+    { name: 'Home', path: '/dashboard', icon: Home },
     { name: 'Inbox', path: '/inbox', icon: Mail },
     { name: 'Projects', path: '/projects', icon: FolderKanban },
+    { name: 'Logistics', path: '/logistics', icon: Truck },
+    { name: 'Beneficiaries', path: '/beneficiaries', icon: Users },
     ...(role === 'ADMIN' ? [{ name: 'Partners', path: '/partners', icon: Handshake }] : []),
     { name: 'Audit Logs', path: '/audit-logs', icon: History },
     ...(role !== 'FIELD_OFFICER' ? [{ name: 'Reports', path: '/reports', icon: BarChart3 }] : []),
@@ -40,7 +42,7 @@ export default function Sidebar() {
           <NavLink
             key={item.name}
             to={item.path}
-            end={item.path === '/'} 
+            end={item.path === '/dashboard'} 
             className={({ isActive }) =>
               `flex items-center gap-4 px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
                 isActive

@@ -25,12 +25,31 @@ import {
   UpdateTaskStatusRequest,
   ProjectImpactMetricResponse,
   AuditLogResponse,
+  UpdateBudgetRequest,
 } from '@pulse/shared-types';
 import ProjectTaskBoard, { NEXT_STATUS, STATUS_CONFIG } from './ProjectTaskBoard';
-import { Loader2, X, Archive, Landmark, Target, Download } from 'lucide-react';
+import { Loader2, X, Archive, Landmark, Target, Download, ArrowLeft } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
+import { Dialog } from '../../components/ui/Dialog';
+import { useHasRole } from '../../components/RequireRole';
+import { getApiErrorMessage } from '../../lib/errors';
 
+
+const actionEventMap: Record<string, string> = {
+  UPDATE_TASK_STATUS: 'Task Status Changed',
+  UPDATE_BUDGET: 'Budget Allocation Modified',
+  CREATE_TASK: 'Task Created',
+  UPDATE_PROJECT: 'Project Updated',
+  DELETE_TASK: 'Task Deleted',
+  CREATE_PROJECT: 'Project Created',
+  ADD_EXPENSE: 'Recorded Expense',
+  UPDATE_TASK_PHASE: 'Task Phase Updated',
+};
+
+const formatActionName = (action: string): string => {
+  return actionEventMap[action] || action;
+};
 
 function formatDeltaValue(value: string | null | undefined): string {
   if (!value) return 'N/A';
@@ -44,7 +63,7 @@ function formatDeltaValue(value: string | null | undefined): string {
         const amount = parsed.amount_added;
         const reason = parsed.reason;
         if (amount !== undefined || reason !== undefined) {
-          return `Logged Expense: $${amount ?? '0'} (Reason: ${reason ?? 'N/A'})`;
+          return `Logged Expense: ETB ${amount ?? '0'} (Reason: ${reason ?? 'N/A'})`;
         }
         
         // General JSON formatting
@@ -65,6 +84,19 @@ const createPhaseSchema = z.object({
 
 type CreatePhaseForm = z.infer<typeof createPhaseSchema>;
 
+const expenseSchema = z.object({
+  amount: z
+    .number()
+    .gt(0, 'Amount must be greater than 0'),
+  reason: z
+    .string()
+    .min(1, 'Reason is required')
+    .transform((val) => val.trim())
+    .refine((val) => val.length > 0, 'Reason cannot be empty'),
+});
+
+type ExpenseFormValues = z.infer<typeof expenseSchema>;
+
 export default function ProjectDashboard() {
   const { projectId } = useParams<{ projectId: string }>();
   const [searchParams] = useSearchParams();
@@ -78,6 +110,43 @@ export default function ProjectDashboard() {
     position: { top: number; left: number };
   } | null>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
+
+  const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
+  const [budgetError, setBudgetError] = useState<string | null>(null);
+  const isPmOrAdmin = useHasRole(['PROJECT_MANAGER', 'ADMIN']);
+
+  const {
+    register: registerExpense,
+    handleSubmit: handleSubmitExpense,
+    reset: resetExpense,
+    formState: { errors: expenseErrors, isValid: isExpenseValid },
+  } = useForm<ExpenseFormValues>({
+    resolver: zodResolver(expenseSchema),
+    mode: 'onChange',
+    defaultValues: {
+      amount: undefined,
+      reason: '',
+    },
+  });
+
+  const budgetMutation = useMutation({
+    mutationFn: async (payload: UpdateBudgetRequest) => {
+      const res = await api.patch(`/projects/${projectId}/budget`, payload);
+      return res.data as ProjectResponse;
+    },
+    onSuccess: (updated) => {
+      queryClient.setQueryData(['project', projectId, activeCountryId], updated);
+      queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['project-stats', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      setIsExpenseDialogOpen(false);
+      resetExpense();
+      setBudgetError(null);
+    },
+    onError: (err: unknown) => {
+      setBudgetError(getApiErrorMessage(err, 'Failed to record expense.'));
+    },
+  });
 
   const downloadPdfBrief = async () => {
     if (!project) return;
@@ -99,6 +168,31 @@ export default function ProjectDashboard() {
     const budgetSpent = Number(project.budget_spent) || 0;
     const budgetPercent = budgetAllocated > 0 ? Math.round((budgetSpent / budgetAllocated) * 100) : 0;
     const budgetDifference = Math.abs(budgetAllocated - budgetSpent);
+
+    // Calculate phase progress
+    const phaseProgressHtml = phases.length > 0
+      ? phases.map((phase) => {
+          const phaseTasks = tasks.filter(t => t.phase_id === phase.id);
+          const totalTasks = phaseTasks.length;
+          const completedTasks = phaseTasks.filter(t => t.status === 'COMPLETED').length;
+          const percent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+          return `
+            <div style="padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 8px; background: #ffffff;">
+              <div style="font-weight: bold; font-size: 13px; color: #1e293b;">${phase.name}</div>
+              <div style="font-size: 11px; color: #475569; margin-top: 4px;">Tasks: ${completedTasks} / ${totalTasks} completed</div>
+              <div style="margin-top: 8px;">
+                <div style="display: flex; justify-content: space-between; font-size: 10px; font-weight: 700; color: #64748b; margin-bottom: 4px;">
+                  <span>Progress</span>
+                  <span>${percent}%</span>
+                </div>
+                <div style="background: #f1f5f9; height: 6px; border-radius: 3px; overflow: hidden;">
+                  <div style="background: #10b981; width: ${percent}%; height: 100%;"></div>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('')
+      : '<div style="font-size: 12px; color: #64748b; font-style: italic;">No phases defined.</div>';
 
     // Parse outcomes and indicators
     let outcomes: any[] = [];
@@ -140,7 +234,7 @@ export default function ProjectDashboard() {
           return `
             <tr style="border-bottom: 1px solid #f1f5f9; color: #334155;">
               <td style="padding: 10px 5px; font-weight: 600;">${log.user_name || 'System'}</td>
-              <td style="padding: 10px 5px;">${log.action || 'Updated'}</td>
+              <td style="padding: 10px 5px;">${formatActionName(log.action) || 'Updated'}</td>
               <td style="padding: 10px 5px; font-family: monospace; font-size: 11px;">${changeStr}</td>
               <td style="padding: 10px 5px; color: #64748b; font-size: 11px;">${dateStr}</td>
             </tr>
@@ -181,7 +275,12 @@ export default function ProjectDashboard() {
 
       <!-- Title Section -->
       <div style="margin-bottom: 25px;">
-        <h1 style="font-size: 24px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0; letter-spacing: -0.025em;">${project.name}</h1>
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; width: 100%;">
+          <h1 style="font-size: 24px; font-weight: 900; color: #0f172a; margin: 0; letter-spacing: -0.025em;">${project.name}</h1>
+          <span style="font-size: 11px; font-weight: 800; background: ${project.status === 'COMPLETED' ? '#f1f5f9' : '#dbeafe'}; color: ${project.status === 'COMPLETED' ? '#475569' : '#1e40af'}; border: 1px solid ${project.status === 'COMPLETED' ? '#cbd5e1' : '#bfdbfe'}; padding: 4px 10px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.05em;">
+            ${project.status === 'COMPLETED' ? 'Archived' : 'Active'}
+          </span>
+        </div>
         <p style="font-size: 12px; color: #475569; margin: 0 0 16px 0; line-height: 1.5;">${project.description || 'No description provided.'}</p>
         
         <div style="display: flex; gap: 12px; background: #f8fafc; border-radius: 8px; padding: 12px; border: 1px solid #e2e8f0;">
@@ -206,11 +305,11 @@ export default function ProjectDashboard() {
         <div style="display: flex; gap: 16px; margin-bottom: 12px;">
           <div style="flex: 1; padding: 10px; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0;">
             <span style="font-size: 9px; font-weight: 800; color: #64748b; text-transform: uppercase;">Budget Allocation</span>
-            <span style="font-size: 18px; font-weight: 800; color: #0f172a; display: block; margin-top: 4px;">$${budgetAllocated.toLocaleString()}</span>
+            <span style="font-size: 18px; font-weight: 800; color: #0f172a; display: block; margin-top: 4px;">ETB ${budgetAllocated.toLocaleString()}</span>
           </div>
           <div style="flex: 1; padding: 10px; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0;">
             <span style="font-size: 9px; font-weight: 800; color: #64748b; text-transform: uppercase;">Total Spent</span>
-            <span style="font-size: 18px; font-weight: 800; color: #0f172a; display: block; margin-top: 4px;">$${budgetSpent.toLocaleString()}</span>
+            <span style="font-size: 18px; font-weight: 800; color: #0f172a; display: block; margin-top: 4px;">ETB ${budgetSpent.toLocaleString()}</span>
           </div>
         </div>
         <!-- Progress Bar -->
@@ -219,7 +318,15 @@ export default function ProjectDashboard() {
         </div>
         <div style="display: flex; justify-content: space-between; font-size: 10px; font-weight: 700; color: #64748b; margin-top: 6px;">
           <span>Utilization: ${budgetPercent}%</span>
-          <span>${budgetPercent > 100 ? 'Overbudget by $' + budgetDifference.toLocaleString() : 'Remaining Surplus: $' + budgetDifference.toLocaleString()}</span>
+          <span>${budgetPercent > 100 ? 'Overbudget by ETB ' + budgetDifference.toLocaleString() : 'Remaining Surplus: ETB ' + budgetDifference.toLocaleString()}</span>
+        </div>
+      </div>
+
+      <!-- Phase Progress Section -->
+      <div style="margin-bottom: 30px;">
+        <h3 style="font-size: 13px; font-weight: 800; color: #0f172a; margin: 0 0 12px 0; text-transform: uppercase; letter-spacing: 0.05em;">Phase Progress</h3>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          ${phaseProgressHtml}
         </div>
       </div>
 
@@ -266,7 +373,7 @@ export default function ProjectDashboard() {
       });
       
       pdf.addImage(imgData, 'PNG', 0, 0, canvas.width / 2, canvas.height / 2);
-      pdf.save(`${project.name.replace(/\s+/g, '_')}_brief.pdf`);
+      pdf.save(`${project.name.replace(/\s+/g, '_')}_Brief.pdf`);
     } catch (err) {
       console.error("Failed to generate PDF:", err);
       alert("Failed to generate PDF. Please try again.");
@@ -289,6 +396,8 @@ export default function ProjectDashboard() {
     },
     enabled: !!projectId,
   });
+
+  const isArchived = project?.status === 'COMPLETED' || (project?.status as string) === 'Archived';
 
   const phasesQueryKey = ['project-phases', projectId, activeCountryId];
 
@@ -478,7 +587,7 @@ export default function ProjectDashboard() {
             phases={phases}
             isUpdating={updateTaskStatusMutation.isPending}
             onStatusChange={handleStatusChange}
-            readOnly={project?.status === 'COMPLETED'}
+            readOnly={isArchived}
           />
         );
       case 'Messages':
@@ -514,17 +623,15 @@ export default function ProjectDashboard() {
   if (tabPanel) {
     return (
       <div className="max-w-7xl mx-auto space-y-6 animate-fade-in font-sans">
-        {project?.status === 'COMPLETED' && (
-          <div className="flex items-center gap-3 text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2">
-            <Link to="/projects?tab=Active" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-              ← Back to Active Workspaces
-            </Link>
-            <span className="text-slate-300 dark:text-slate-750">|</span>
-            <Link to="/projects?tab=Archived" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-              ← Back to Archived
-            </Link>
-          </div>
-        )}
+        <div className="mb-2">
+          <Link
+            to={isArchived ? "/projects?tab=Archived" : "/projects?tab=Active"}
+            className="inline-flex items-center gap-2.5 px-6 py-3 text-lg font-bold bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm hover:shadow-md hover:bg-slate-50 dark:hover:bg-slate-850 transition-all duration-200 w-fit cursor-pointer"
+          >
+            <ArrowLeft className="w-6 h-6 text-blue-650 dark:text-blue-400 stroke-[3px]" />
+            <span>← Back</span>
+          </Link>
+        </div>
         <div className="flex items-start justify-between gap-4">
           <div className="flex flex-col">
             <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-3 flex-wrap">
@@ -536,6 +643,11 @@ export default function ProjectDashboard() {
               )}
             </h1>
             <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{project?.description}</p>
+            <div className="text-xs text-gray-500 font-medium flex gap-4 mt-2">
+              <span>📍 North Gondar Zone</span>
+              <span>💵 Base: ETB</span>
+              <span>📅 End: Oct 2026</span>
+            </div>
           </div>
           <button
             onClick={downloadPdfBrief}
@@ -552,17 +664,15 @@ export default function ProjectDashboard() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 animate-fade-in font-sans select-none">
-      {project?.status === 'COMPLETED' && (
-        <div className="flex items-center gap-3 text-xs font-semibold text-slate-500 dark:text-slate-400 -mb-4">
-          <Link to="/projects?tab=Active" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-            ← Back to Active Workspaces
-          </Link>
-          <span className="text-slate-300 dark:text-slate-750">|</span>
-          <Link to="/projects?tab=Archived" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-            ← Back to Archived
-          </Link>
-        </div>
-      )}
+      <div className="-mb-4">
+        <Link
+          to={isArchived ? "/projects?tab=Archived" : "/projects?tab=Active"}
+          className="inline-flex items-center gap-2.5 px-6 py-3 text-lg font-bold bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm hover:shadow-md hover:bg-slate-50 dark:hover:bg-slate-850 transition-all duration-200 w-fit cursor-pointer"
+        >
+          <ArrowLeft className="w-6 h-6 text-blue-650 dark:text-blue-400 stroke-[3px]" />
+          <span>← Back</span>
+        </Link>
+      </div>
       {/* HEADER SECTION */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex flex-col">
@@ -578,6 +688,11 @@ export default function ProjectDashboard() {
             {project?.description ||
               'Project management dashboard and task tracking.'}
           </p>
+          <div className="text-xs text-gray-500 font-medium flex gap-4 mt-2">
+            <span>📍 North Gondar Zone</span>
+            <span>💵 Base: ETB</span>
+            <span>📅 End: Oct 2026</span>
+          </div>
         </div>
 
         <div className="flex items-center gap-3 flex-shrink-0">
@@ -589,7 +704,16 @@ export default function ProjectDashboard() {
             Download PDF Brief
           </button>
 
-          {project?.status !== 'COMPLETED' && (
+          {!isArchived && isPmOrAdmin && (
+            <button
+              onClick={() => setIsExpenseDialogOpen(true)}
+              className="border border-blue-600 text-blue-600 bg-transparent hover:bg-blue-50 dark:hover:bg-blue-955/20 font-bold text-sm px-6 py-3 rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
+            >
+              Record Expense
+            </button>
+          )}
+
+          {!isArchived && (
             <button
               onClick={() => setIsModalOpen(true)}
               className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white font-bold text-sm px-6 py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
@@ -620,8 +744,8 @@ export default function ProjectDashboard() {
       {project?.status === 'COMPLETED' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in">
           {/* COLUMN 1: FINAL FINANCIAL METRICS */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm space-y-4">
-            <h3 className="text-base font-extrabold text-slate-800 dark:text-white flex items-center gap-2">
+          <div className="bg-white dark:bg-slate-900 border-0 dark:border dark:border-slate-800 rounded-xl p-6 shadow-md dark:shadow-none space-y-4">
+            <h3 className="text-base font-extrabold text-gray-900 dark:text-white flex items-center gap-2">
               <Landmark className="w-5 h-5 text-blue-600" />
               Final Financial Metrics
             </h3>
@@ -629,14 +753,14 @@ export default function ProjectDashboard() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-lg border border-slate-100 dark:border-slate-800/40">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Allocated Budget</span>
-                  <span className="text-xl font-extrabold text-slate-800 dark:text-white mt-1 block">
-                    ${(Number(project?.budget_allocated) || 0).toLocaleString()}
+                  <span className="text-xl font-extrabold text-gray-900 dark:text-white mt-1 block">
+                    ETB {(Number(project?.budget_allocated) || 0).toLocaleString()}
                   </span>
                 </div>
                 <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-lg border border-slate-100 dark:border-slate-800/40">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Final Spent Amount</span>
-                  <span className="text-xl font-extrabold text-slate-800 dark:text-white mt-1 block">
-                    ${(Number(project?.budget_spent) || 0).toLocaleString()}
+                  <span className="text-xl font-extrabold text-gray-900 dark:text-white mt-1 block">
+                    ETB {(Number(project?.budget_spent) || 0).toLocaleString()}
                   </span>
                 </div>
               </div>
@@ -656,7 +780,7 @@ export default function ProjectDashboard() {
                     className={`h-full rounded-full ${Number(project?.budget_spent) > Number(project?.budget_allocated) ? 'bg-red-500' : 'bg-emerald-500'}`}
                     style={{ 
                       width: `${Math.min(100, Math.round(((Number(project?.budget_spent) || 0) / (Number(project?.budget_allocated) || 1)) * 100))}%` 
-                    }}
+                     }}
                   />
                 </div>
               </div>
@@ -664,7 +788,7 @@ export default function ProjectDashboard() {
               <div className="pt-3 border-t border-slate-150 dark:border-slate-800 flex items-center justify-between text-xs">
                 <span className="font-semibold text-slate-500">Remaining/Surplus:</span>
                 <span className={`font-extrabold ${Number(project?.budget_allocated) >= Number(project?.budget_spent) ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                  ${Math.abs((Number(project?.budget_allocated) || 0) - (Number(project?.budget_spent) || 0)).toLocaleString()}
+                  ETB {Math.abs((Number(project?.budget_allocated) || 0) - (Number(project?.budget_spent) || 0)).toLocaleString()}
                   {Number(project?.budget_allocated) >= Number(project?.budget_spent) ? ' (Surplus)' : ' (Deficit)'}
                 </span>
               </div>
@@ -672,8 +796,8 @@ export default function ProjectDashboard() {
           </div>
 
           {/* COLUMN 2: PROJECT IMPACT METRICS */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm space-y-4">
-            <h3 className="text-base font-extrabold text-slate-800 dark:text-white flex items-center gap-2">
+          <div className="bg-white dark:bg-slate-900 border-0 dark:border dark:border-slate-800 rounded-xl p-6 shadow-md dark:shadow-none space-y-4">
+            <h3 className="text-base font-extrabold text-gray-900 dark:text-white flex items-center gap-2">
               <Target className="w-5 h-5 text-emerald-600" />
               Project Impact Metrics
             </h3>
@@ -688,7 +812,7 @@ export default function ProjectDashboard() {
                           <span className="truncate pr-1">Metric {m.metric_template_id.substring(0, 8)}</span>
                           <span className="text-emerald-500">{pct}%</span>
                         </div>
-                        <span className="text-base font-extrabold text-slate-800 dark:text-white mt-1">
+                        <span className="text-base font-extrabold text-gray-900 dark:text-white mt-1">
                           {m.current_value} <span className="text-xs font-normal text-slate-500">/ {m.target_value}</span>
                         </span>
                       </div>
@@ -720,7 +844,7 @@ export default function ProjectDashboard() {
           createPhaseMutation.reset();
           setIsCreatePhaseModalOpen(true);
         }}
-        readOnly={project?.status === 'COMPLETED'}
+        readOnly={isArchived}
       />
 
       {/* STATUS TRANSITION POPOVER */}
@@ -759,6 +883,68 @@ export default function ProjectDashboard() {
           }}
           onSubmit={(payload) => createPhaseMutation.mutate(payload)}
         />
+      )}
+
+      {/* RECORD EXPENSE DIALOG */}
+      {isExpenseDialogOpen && projectId && (
+        <Dialog
+          open={isExpenseDialogOpen}
+          onOpenChange={(open) => {
+            setIsExpenseDialogOpen(open);
+            if (!open) {
+              resetExpense();
+              setBudgetError(null);
+            }
+          }}
+          title="Record expense"
+        >
+          <form
+            onSubmit={handleSubmitExpense((values) => {
+              budgetMutation.mutate({ amount_spent: values.amount, reason: values.reason });
+            })}
+            className="space-y-4"
+          >
+            <div>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">Amount (ETB)</label>
+              <input
+                type="number"
+                min="0.01"
+                step="0.01"
+                {...registerExpense('amount', { valueAsNumber: true })}
+                className={`mt-1 w-full px-3 py-2 bg-white text-slate-900 border border-slate-300 dark:bg-slate-850 dark:text-white dark:border-slate-700 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-650 transition-all ${
+                  expenseErrors.amount ? 'border-red-550 focus:ring-red-500' : ''
+                }`}
+              />
+              {expenseErrors.amount?.message && (
+                <p className="text-xs text-red-500 mt-1 font-semibold">{expenseErrors.amount.message}</p>
+              )}
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">Reason</label>
+              <input
+                type="text"
+                {...registerExpense('reason')}
+                placeholder="e.g. Pump repair, transport costs"
+                className={`mt-1 w-full px-3 py-2 bg-white text-slate-900 border border-slate-300 dark:bg-slate-850 dark:text-white dark:border-slate-700 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-650 transition-all ${
+                  expenseErrors.reason ? 'border-red-550 focus:ring-red-500' : ''
+                }`}
+              />
+              {expenseErrors.reason?.message && (
+                <p className="text-xs text-red-500 mt-1 font-semibold">{expenseErrors.reason.message}</p>
+              )}
+            </div>
+            {budgetError && (
+              <p className="text-sm text-red-505 font-medium">{budgetError}</p>
+            )}
+            <button
+              type="submit"
+              disabled={!isExpenseValid || budgetMutation.isPending}
+              className="w-full py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-emerald-650 focus:ring-offset-2 dark:focus:ring-offset-[#0B1220]"
+            >
+              {budgetMutation.isPending ? 'Saving…' : 'Apply to budget'}
+            </button>
+          </form>
+        </Dialog>
       )}
     </div>
   );

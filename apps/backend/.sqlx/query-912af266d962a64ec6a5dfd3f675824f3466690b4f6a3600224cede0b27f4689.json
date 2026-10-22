@@ -1,0 +1,176 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        WITH updated_project AS (\n            UPDATE projects\n            SET budget_spent = budget_spent + $1,\n                budget_warning_sent = CASE WHEN $3 = TRUE THEN TRUE ELSE budget_warning_sent END\n            WHERE id = $2\n            RETURNING *\n        )\n        SELECT\n            p.id,\n            p.country_id,\n            p.name,\n            p.description,\n            p.budget_allocated,\n            p.budget_spent,\n            CASE\n                WHEN p.status = 'DRAFT'::project_status THEN 'DRAFT'::project_status\n                WHEN task_rollup.task_count > 0 AND task_rollup.completed_count = task_rollup.task_count\n                    THEN 'COMPLETED'::project_status\n                WHEN task_rollup.active_count > 0\n                    THEN 'IN_PROGRESS'::project_status\n                ELSE 'PLANNING'::project_status\n            END as \"status!: ProjectStatus\",\n            p.funding_sources,\n            p.focus_area as \"focus_area: ProjectFocusArea\",\n            p.location_metadata,\n            CASE\n                WHEN task_rollup.total_days > 0\n                    THEN (task_rollup.completed_days::float8 / task_rollup.total_days::float8) * 100.0\n                ELSE 0.0\n            END as \"progress_percentage!\",\n            p.is_template,\n            p.start_date,\n            p.end_date,\n            p.sector_type,\n            p.risks_and_mitigations,\n            p.assumptions,\n            p.outcomes_and_indicators,\n            p.total_income,\n            p.donor_name,\n            p.project_leader_id,\n            COALESCE((SELECT array_agg(user_id) FROM project_members WHERE project_id = p.id), ARRAY[]::uuid[]) as \"member_ids!\"\n        FROM updated_project p\n        LEFT JOIN LATERAL (\n            SELECT\n                COUNT(*) as task_count,\n                COUNT(*) FILTER (WHERE status = 'COMPLETED') as completed_count,\n                COUNT(*) FILTER (WHERE status IN ('IN_PROGRESS', 'COMPLETED')) as active_count,\n                COALESCE(SUM(COALESCE(GREATEST(end_date - start_date + 1, 1), 1)), 0) as total_days,\n                COALESCE(SUM(CASE WHEN status = 'COMPLETED' THEN COALESCE(GREATEST(end_date - start_date + 1, 1), 1) ELSE 0 END), 0) as completed_days\n            FROM tasks\n            WHERE project_id = p.id\n        ) task_rollup ON TRUE\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "country_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "budget_allocated",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 5,
+        "name": "budget_spent",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 6,
+        "name": "status!: ProjectStatus",
+        "type_info": {
+          "Custom": {
+            "name": "project_status",
+            "kind": {
+              "Enum": [
+                "PLANNING",
+                "IN_PROGRESS",
+                "COMPLETED",
+                "ON_HOLD",
+                "DRAFT"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "funding_sources",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 8,
+        "name": "focus_area: ProjectFocusArea",
+        "type_info": {
+          "Custom": {
+            "name": "project_focus_area",
+            "kind": {
+              "Enum": [
+                "EDUCATION",
+                "HEALTH",
+                "WASH",
+                "EMPOWERMENT",
+                "TRAFFICKING"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "location_metadata",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 10,
+        "name": "progress_percentage!",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 11,
+        "name": "is_template",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 12,
+        "name": "start_date",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 13,
+        "name": "end_date",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 14,
+        "name": "sector_type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 15,
+        "name": "risks_and_mitigations",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 16,
+        "name": "assumptions",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 17,
+        "name": "outcomes_and_indicators",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 18,
+        "name": "total_income",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 19,
+        "name": "donor_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 20,
+        "name": "project_leader_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 21,
+        "name": "member_ids!",
+        "type_info": "UuidArray"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Numeric",
+        "Uuid",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      null,
+      false,
+      false,
+      false,
+      null,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      null
+    ]
+  },
+  "hash": "912af266d962a64ec6a5dfd3f675824f3466690b4f6a3600224cede0b27f4689"
+}

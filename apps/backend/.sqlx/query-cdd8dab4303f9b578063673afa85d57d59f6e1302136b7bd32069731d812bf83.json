@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO project_impact_metrics (project_id, metric_template_id, target_value, current_value)\n        VALUES ($1, $2, $3, $4)\n        ON CONFLICT (project_id, metric_template_id) \n        DO UPDATE SET target_value = EXCLUDED.target_value, current_value = EXCLUDED.current_value, updated_at = CURRENT_TIMESTAMP\n        RETURNING id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "cdd8dab4303f9b578063673afa85d57d59f6e1302136b7bd32069731d812bf83"
+}

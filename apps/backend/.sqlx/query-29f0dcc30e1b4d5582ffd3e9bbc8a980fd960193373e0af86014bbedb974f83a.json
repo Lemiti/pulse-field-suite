@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO audit_logs (project_id, user_id, action, old_value, new_value)\n        VALUES ($1, $2, 'UPDATE_TASK_PHASE', $3, $4)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "29f0dcc30e1b4d5582ffd3e9bbc8a980fd960193373e0af86014bbedb974f83a"
+}

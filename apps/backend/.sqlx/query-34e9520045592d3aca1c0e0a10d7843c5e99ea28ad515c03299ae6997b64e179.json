@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, beneficiary_id, age, vulnerability_notes\n        FROM beneficiary_dependents\n        WHERE beneficiary_id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "beneficiary_id",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "age",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "vulnerability_notes",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "34e9520045592d3aca1c0e0a10d7843c5e99ea28ad515c03299ae6997b64e179"
+}

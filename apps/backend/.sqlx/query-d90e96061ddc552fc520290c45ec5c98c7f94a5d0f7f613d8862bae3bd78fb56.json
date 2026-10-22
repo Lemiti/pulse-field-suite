@@ -1,0 +1,83 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO procurement_pipelines (pipeline_code, item, qty, supplier, status, expected_date, project, cost)\n        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)\n        RETURNING id, pipeline_code, item, qty, supplier, status, expected_date, project, cost, created_at\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "pipeline_code",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "item",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "qty",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "supplier",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "status",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "expected_date",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 7,
+        "name": "project",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 8,
+        "name": "cost",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Varchar",
+        "Int4",
+        "Varchar",
+        "Varchar",
+        "Date",
+        "Varchar",
+        "Numeric"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "d90e96061ddc552fc520290c45ec5c98c7f94a5d0f7f613d8862bae3bd78fb56"
+}

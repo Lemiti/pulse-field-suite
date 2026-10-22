@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO beneficiary_dependents (beneficiary_id, age, vulnerability_notes)\n                VALUES ($1, $2, $3)\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Int4",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ab1e224ad638f9bee9e0cf2d2b873f932fc84098cadaa2ca2c905c21a9eb8915"
+}

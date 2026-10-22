@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO tasks (\n                project_id, phase_id, assigned_to, name, status, dependencies, start_date, end_date\n            )\n            VALUES ($1, $2, NULL, $3, 'PLAN'::task_status, $4, $5, $6)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Varchar",
+        "Jsonb",
+        "Date",
+        "Date"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "db09ad0200d1dae470dcc2e42ce2cb98950b925fff6ebc1fda1e6ce706b7e1d5"
+}

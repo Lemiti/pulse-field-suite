@@ -1,0 +1,43 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE global_metric_templates\n        SET code = $1, display_name = $2, unit = $3\n        WHERE id = $4\n        RETURNING id, code, display_name, unit\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "code",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "display_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "unit",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "7ae5f9a52838ef90ea577166e83abe372b4472d798c5260f3bfe0b28fa9e7a1f"
+}

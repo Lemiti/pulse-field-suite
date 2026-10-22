@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO media (task_id, gdrive_file_id, gdrive_web_url, uploaded_by)\n        VALUES ($1, $2, $3, $4)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f2f6946ae3f28f71419673ab1a71d5db3ec2dde640ae8270799804331ecd3438"
+}

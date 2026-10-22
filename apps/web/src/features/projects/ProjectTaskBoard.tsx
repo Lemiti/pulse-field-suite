@@ -9,6 +9,14 @@ import {
   Plus,
 } from 'lucide-react';
 
+function getUserInitials(name?: string | null): string {
+  if (!name) return 'UN';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 0) return 'UN';
+  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
 const STATUS_CONFIG: Record<
   TaskStatus,
   { bg: string; text: string; icon: React.ReactNode; label: string }
@@ -108,8 +116,8 @@ function TaskCard({
   const config = STATUS_CONFIG[task.status];
 
   return (
-    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow relative">
-      <h3 className="text-slate-900 dark:text-white font-semibold text-sm line-clamp-2 mb-3">{task.name}</h3>
+    <div className="bg-white dark:bg-slate-800 border-0 dark:border dark:border-slate-700 rounded-lg p-4 shadow-md dark:shadow-none hover:shadow-lg dark:hover:shadow-none transition-shadow relative">
+      <h3 className="text-gray-900 dark:text-white font-semibold text-sm line-clamp-2 mb-3">{task.name}</h3>
       <div className="flex items-center justify-between">
         <button
           ref={buttonRef}
@@ -128,14 +136,22 @@ function TaskCard({
           {!readOnly && <ChevronDown className="w-3 h-3 opacity-60" />}
         </button>
 
-        <span className="text-[10px] text-slate-500 font-mono">
-          ID: {task.id.substring(0, 8)}
-        </span>
+        <div className="flex items-center gap-2">
+          <div 
+            title={task.assigned_user_name || 'Unassigned'} 
+            className="w-6 h-6 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-[10px] font-bold shrink-0"
+          >
+            {getUserInitials(task.assigned_user_name)}
+          </div>
+          <span className="text-[10px] text-slate-500 font-mono">
+            ID: {task.id.substring(0, 8)}
+          </span>
+        </div>
       </div>
 
       {phases && onMoveToPhase && !readOnly && phases.length > 0 && (
         <div className="relative mt-3 pt-3 border-t border-slate-100 dark:border-slate-700 flex justify-between items-center">
-          <span className="text-xs text-slate-500 font-medium">Unassigned</span>
+          <span className="text-xs text-slate-500 font-medium">{task.assigned_user_name || 'Unassigned'}</span>
           <div className="relative">
             <button
               type="button"
@@ -256,9 +272,6 @@ export default function ProjectTaskBoard({
         <section key={phaseId} className="space-y-4">
           <div className="flex items-center gap-3 border-b border-slate-200 dark:border-slate-700 pb-2">
             <h3 className="text-xl font-bold text-slate-900 dark:text-white">{phaseName}</h3>
-            <span className="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200">
-              Phase
-            </span>
             <span className="text-sm text-slate-500 ml-auto">
               {phaseTasks.length} task{phaseTasks.length !== 1 ? 's' : ''}
             </span>

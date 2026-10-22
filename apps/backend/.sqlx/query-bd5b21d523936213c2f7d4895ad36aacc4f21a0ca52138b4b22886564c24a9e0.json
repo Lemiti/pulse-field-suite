@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COUNT(DISTINCT assigned_to) FROM tasks WHERE project_id = $1 AND assigned_to IS NOT NULL",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "bd5b21d523936213c2f7d4895ad36aacc4f21a0ca52138b4b22886564c24a9e0"
+}

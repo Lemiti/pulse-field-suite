@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Path, State},
+    extract::{Path, State, Multipart},
     http::StatusCode,
     Json,
 };
@@ -158,6 +158,8 @@ pub async fn create_project_media(
         return Err((StatusCode::FORBIDDEN, "Access Denied".to_string()));
     }
 
+    crate::api::projects::check_project_write_access(&pool, project_id, claims.sub, &claims.role).await?;
+
     let media_id = Uuid::new_v4();
     sqlx::query!(
         r#"
@@ -241,4 +243,131 @@ pub async fn delete_project_media(
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     Ok(StatusCode::NO_CONTENT)
+}
+
+// POST /api/projects/:project_id/files
+pub async fn upload_project_file(
+    State(pool): State<PgPool>,
+    claims: UserClaims,
+    Path(project_id): Path<Uuid>,
+    mut multipart: Multipart,
+) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+    
+    // 🛡️ SECURITY: Verify user has write access to the project
+    crate::api::projects::check_project_write_access(&pool, project_id, claims.sub, &claims.role).await?;
+
+    let mut file_bytes = Vec::new();
+    let mut file_name = String::new();
+    let mut content_type = String::new();
+    let mut task_id_str = String::new();
+
+    while let Some(field) = multipart.next_field().await.map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))? {
+        let name = field.name().unwrap_or_default().to_string();
+        if name == "file" {
+            file_name = field.file_name().unwrap_or_default().to_string();
+            content_type = field.content_type().unwrap_or("application/octet-stream").to_string();
+            let bytes_data = field.bytes().await.map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
+            file_bytes = bytes_data.to_vec();
+        } else if name == "task_id" {
+            task_id_str = field.text().await.map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
+        }
+    }
+
+    if file_bytes.is_empty() {
+        return Err((StatusCode::BAD_REQUEST, "No file uploaded or file is empty".to_string()));
+    }
+
+    if task_id_str.is_empty() {
+        return Err((StatusCode::BAD_REQUEST, "Missing task_id".to_string()));
+    }
+
+    let task_id = Uuid::parse_str(&task_id_str)
+        .map_err(|_| (StatusCode::BAD_REQUEST, "Invalid task_id UUID format".to_string()))?;
+
+    // Verify task belongs to this project, and project matches user's country
+    let belongs = sqlx::query_scalar!(
+        r#"
+        SELECT EXISTS(
+            SELECT 1 FROM tasks t
+            JOIN projects p ON t.project_id = p.id
+            WHERE t.id = $1 AND p.id = $2 AND p.country_id = $3
+        ) as "exists!: bool"
+        "#,
+        task_id,
+        project_id,
+        claims.country_id
+    )
+    .fetch_one(&pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    if !belongs {
+        return Err((StatusCode::FORBIDDEN, "Access Denied: Task does not belong to the project or user's country".to_string()));
+    }
+
+    // Use Google Drive API to upload file
+    let client = reqwest::Client::new();
+    let api_key = std::env::var("GEMINI_API_KEY").unwrap_or_default();
+    let gdrive_url = format!(
+        "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink&key={}",
+        api_key
+    );
+
+    // Build metadata part
+    let metadata = serde_json::json!({
+        "name": file_name,
+        "parents": vec!["1HM-CJ2xiNfsJJV4pSZj-kamF41uVd_rw"]
+    });
+
+    let form = reqwest::multipart::Form::new()
+        .part("metadata", reqwest::multipart::Part::text(metadata.to_string())
+            .mime_str("application/json")
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?)
+        .part("file", reqwest::multipart::Part::bytes(file_bytes)
+            .file_name(file_name.clone())
+            .mime_str(&content_type)
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?);
+
+    let response = client.post(&gdrive_url)
+        .multipart(form)
+        .send()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to send request to Google Drive: {}", e)))?;
+
+    if !response.status().is_success() {
+        let err_text = response.text().await.unwrap_or_default();
+        return Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Google Drive API error: {}", err_text)));
+    }
+
+    let gdrive_res: serde_json::Value = response.json().await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to parse Google Drive response: {}", e)))?;
+
+    let gdrive_file_id = gdrive_res["id"].as_str()
+        .ok_or((StatusCode::INTERNAL_SERVER_ERROR, "Google Drive response missing 'id'".to_string()))?;
+    let gdrive_web_url = gdrive_res["webViewLink"].as_str()
+        .ok_or((StatusCode::INTERNAL_SERVER_ERROR, "Google Drive response missing 'webViewLink'".to_string()))?;
+
+    // Save metadata to database
+    let media_id = Uuid::new_v4();
+    sqlx::query!(
+        r#"
+        INSERT INTO media (id, task_id, gdrive_file_id, gdrive_web_url, uploaded_by)
+        VALUES ($1, $2, $3, $4, $5)
+        "#,
+        media_id,
+        task_id,
+        Some(gdrive_file_id.to_string()),
+        Some(gdrive_web_url.to_string()),
+        claims.sub
+    )
+    .execute(&pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "media_id": media_id,
+        "gdrive_file_id": gdrive_file_id,
+        "gdrive_web_url": gdrive_web_url
+    })))
 }

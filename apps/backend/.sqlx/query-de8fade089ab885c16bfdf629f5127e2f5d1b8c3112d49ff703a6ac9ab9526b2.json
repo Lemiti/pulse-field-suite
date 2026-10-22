@@ -1,0 +1,65 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT \n            a.id, \n            a.project_id, \n            a.user_id, \n            u.name as \"user_name!\",\n            a.action, \n            CASE \n                WHEN a.action = 'UPDATE_TASK_PHASE' THEN\n                    CASE \n                        WHEN a.old_value = 'None' OR a.old_value IS NULL THEN 'Uncategorized'\n                        ELSE COALESCE(p_old.name, 'Uncategorized')\n                    END\n                ELSE a.old_value\n            END as \"old_value\",\n            CASE \n                WHEN a.action = 'UPDATE_TASK_PHASE' THEN\n                    CASE \n                        WHEN a.new_value = 'None' OR a.new_value IS NULL THEN 'Uncategorized'\n                        ELSE COALESCE(p_new.name, 'Uncategorized')\n                    END\n                ELSE a.new_value\n            END as \"new_value\",\n            a.created_at\n        FROM audit_logs a\n        JOIN projects p ON a.project_id = p.id\n        JOIN users u ON a.user_id = u.id\n        LEFT JOIN phases p_old ON (\n            a.action = 'UPDATE_TASK_PHASE' \n            AND p_old.id::text = a.old_value\n        )\n        LEFT JOIN phases p_new ON (\n            a.action = 'UPDATE_TASK_PHASE' \n            AND p_new.id::text = a.new_value\n        )\n        WHERE a.project_id = $1 AND p.country_id = $2\n        ORDER BY a.created_at DESC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "project_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "user_name!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "action",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "old_value",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "new_value",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      null,
+      null,
+      true
+    ]
+  },
+  "hash": "de8fade089ab885c16bfdf629f5127e2f5d1b8c3112d49ff703a6ac9ab9526b2"
+}
